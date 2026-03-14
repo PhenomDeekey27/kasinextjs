@@ -1,0 +1,23 @@
+components/BookingForm.tsx(15,8): error TS2307: Cannot find module './ui/form' or its corresponding type declarations.
+components/BookingForm.tsx(55,5): error TS2322: Type 'Resolver<{ primaryPassenger: { name: string; age: unknown; gender: "Male" | "Female" | "Other"; seatPreference: "LB" | "MB" | "UB" | "SL" | "SU" | "No Preference"; phone: string; aadhaar: string; referenceMember?: string | undefined; }; groupMembers: { ...; }[]; paymentMode: "manual" | "online"; paymentAmount: unkno...' is not assignable to type 'Resolver<{ primaryPassenger: { name: string; age: number; gender: "Male" | "Female" | "Other"; seatPreference: "LB" | "MB" | "UB" | "SL" | "SU" | "No Preference"; phone: string; aadhaar: string; referenceMember?: string | undefined; }; groupMembers: { ...; }[]; paymentMode: "manual" | "online"; paymentAmount: number...'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ primaryPassenger: { name: string; age: number; gender: "Male" | "Female" | "Other"; seatPreference: "LB" | "MB" | "UB" | "SL" | "SU" | "No Preference"; phone: string; aadhaar: string; referenceMember?: string | undefined; }; groupMembers: { ...; }[]; paymentMode: "manual" | "online"; paymentAmount:...' is not assignable to type 'ResolverOptions<{ primaryPassenger: { name: string; age: unknown; gender: "Male" | "Female" | "Other"; seatPreference: "LB" | "MB" | "UB" | "SL" | "SU" | "No Preference"; phone: string; aadhaar: string; referenceMember?: string | undefined; }; groupMembers: { ...; }[]; paymentMode: "manual" | "online"; paymentAmount...'.
+      Type 'unknown' is not assignable to type 'number'.
+components/BookingForm.tsx(128,45): error TS2345: Argument of type '(data: BookingFormValues) => Promise<void>' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ primaryPassenger: { name: string; age: number; gender: "Male" | "Female" | "Other"; seatPreference: "LB" | "MB" | "UB" | "SL" | "SU" | "No Preference"; phone: string; aadhaar: string; referenceMember?: string | undefined; }; groupMembers: { ...; }[]; paymentMode: "manual" | "online"; paymentAmount: number; payment...'.
+      Type 'FieldValues' is missing the following properties from type '{ primaryPassenger: { name: string; age: number; gender: "Male" | "Female" | "Other"; seatPreference: "LB" | "MB" | "UB" | "SL" | "SU" | "No Preference"; phone: string; aadhaar: string; referenceMember?: string | undefined; }; groupMembers: { ...; }[]; paymentMode: "manual" | "online"; paymentAmount: number; payment...': primaryPassenger, groupMembers, paymentMode, paymentAmount
+components/BookingForm.tsx(141,30): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(154,32): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(165,32): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(185,30): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(197,30): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(209,30): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(229,30): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(280,36): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(291,36): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(302,36): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(320,36): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(371,30): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(391,32): error TS7031: Binding element 'field' implicitly has an 'any' type.
+components/BookingForm.tsx(406,34): error TS7031: Binding element 'field' implicitly has an 'any' type.
