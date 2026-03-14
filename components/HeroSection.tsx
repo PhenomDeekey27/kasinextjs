@@ -1,0 +1,109 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { Train, Users, ShieldCheck, MessageSquare } from "lucide-react";
+import Link from "next/link";
+import { Button } from "./ui/button";
+
+const features = [
+  {
+    icon: Train,
+    title: "Easy Booking",
+    description: "Book entire tourist coaches intuitively with our responsive maps.",
+  },
+  {
+    icon: Users,
+    title: "Group Seating",
+    description: "Automatic seat grouping for up to 8 members per request.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Secure Payments",
+    description: "Upload payment proofs for manual verification or reliable online gateways.",
+  },
+  {
+    icon: MessageSquare,
+    title: "WhatsApp Notifications",
+    description: "Get real-time booking confirmation and status on your mobile.",
+  },
+];
+
+export function HeroSection() {
+  return (
+    <div className="w-full">
+      {/* Hero Header */}
+      <section className="relative overflow-hidden bg-slate-900 py-24 sm:py-32 lg:pb-32 xl:pb-36 backdrop-blur">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1510133744874-096894065f49?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-30"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40" />
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl"
+            >
+              Book Your Tourism Train Seats Easily
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="mt-6 text-lg leading-8 text-slate-300"
+            >
+              Group friendly seat booking with automatic allocation. Avoid the hassle
+              of uncoordinated tourism travel with seamless reservations.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mt-10 flex items-center justify-center gap-x-6"
+            >
+              <Link href="/book-ticket">
+                <Button size="lg" className="rounded-full bg-blue-600 px-8 py-6 text-lg font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all hover:scale-105">
+                  Book Tickets
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-24 bg-white sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-blue-600">Faster travel</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              Everything you need for tourism travel
+            </p>
+          </div>
+          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-4">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex flex-col"
+                >
+                  <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-slate-900">
+                    <feature.icon className="h-5 w-5 flex-none text-blue-600" aria-hidden="true" />
+                    {feature.title}
+                  </dt>
+                  <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-600">
+                    <p className="flex-auto">{feature.description}</p>
+                  </dd>
+                </motion.div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
