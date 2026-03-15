@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Train } from "lucide-react";
 
 export function Footer() {
   return (
@@ -8,7 +8,13 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-4 lg:grid-cols-5">
           <div className="md:col-span-2 lg:col-span-2">
             <Link href="/" className="flex items-center space-x-2 mb-4">
-              <Train className="h-6 w-6 text-blue-600" />
+              <Image
+                src="/logo.jpeg"
+                alt="J Tourism logo"
+                width={28}
+                height={28}
+                className="h-7 w-7 rounded-sm object-cover"
+              />
               <span className="font-bold text-lg">J Tourism</span>
             </Link>
             <p className="text-sm text-slate-500 max-w-xs mt-4">

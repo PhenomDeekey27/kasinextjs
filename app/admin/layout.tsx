@@ -1,10 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
-  Train,
   LayoutDashboard,
   Users,
   Grid,
@@ -108,7 +108,13 @@ export default function AdminLayout({
         }`}
       >
         <div className="p-6 flex items-center space-x-3 text-white">
-          <Train className="w-8 h-8 text-blue-500" />
+          <Image
+            src="/logo.jpeg"
+            alt="J Tourism logo"
+            width={32}
+            height={32}
+            className="w-8 h-8 rounded-md object-cover bg-white"
+          />
           <span className="text-xl font-bold tracking-tight">Admin OS</span>
         </div>
 

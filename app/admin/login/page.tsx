@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Train } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -67,9 +67,13 @@ export default function AdminLogin() {
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="space-y-2 text-center pt-8">
           <div className="flex justify-center mb-4">
-            <div className="bg-blue-600 p-3 rounded-full">
-              <Train className="w-8 h-8 text-white" />
-            </div>
+            <Image
+              src="/logo.jpeg"
+              alt="J Tourism logo"
+              width={56}
+              height={56}
+              className="w-14 h-14 rounded-full object-cover border-2 border-blue-100"
+            />
           </div>
           <CardTitle className="text-2xl font-bold">Admin Portal</CardTitle>
           <CardDescription>
