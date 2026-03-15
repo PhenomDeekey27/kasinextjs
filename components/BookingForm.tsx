@@ -49,6 +49,7 @@ export function BookingForm() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [referenceMembers, setReferenceMembers] = useState<Array<{id: number; name: string}>>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [isReferenceLocked, setIsReferenceLocked] = useState(false);
   const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
   const [paymentUploadKey, setPaymentUploadKey] = useState(0);
   const { toast } = useToast();
@@ -102,9 +103,33 @@ export function BookingForm() {
   const totalPassengers = 1 + memberFields.length;
 
   const referenceQuery = (form.watch("primaryPassenger.referenceMember") || "").trim();
+  const hasExactReferenceMatch = referenceMembers.some(
+    (member) => member.name.toLowerCase() === referenceQuery.toLowerCase(),
+  );
   const filteredReferenceMembers = referenceMembers
     .filter((member) => member.name.toLowerCase().includes(referenceQuery.toLowerCase()))
     .slice(0, 12);
+
+  const resetBookingForm = () => {
+    form.reset({
+      primaryPassenger: {
+        name: "",
+        age: 0,
+        gender: "Male",
+        seatPreference: "No Preference",
+        phone: "",
+        aadhaar: "",
+        referenceMember: "",
+      },
+      groupMembers: [],
+      paymentMode: "online",
+      paymentAmount: 0,
+      paymentProof: undefined,
+    });
+    setPaymentProofPreview(null);
+    setPaymentUploadKey((prev) => prev + 1);
+    setIsReferenceLocked(false);
+  };
 
   const onSubmit = async (data: BookingFormValues) => {
     // Validation: Payment proof required for online payments
@@ -149,7 +174,14 @@ export function BookingForm() {
   };
 
   if (isSuccess) {
-    return <BookingSuccess onReset={() => { form.reset(); setIsSuccess(false); }} />;
+    return (
+      <BookingSuccess
+        onReset={() => {
+          resetBookingForm();
+          setIsSuccess(false);
+        }}
+      />
+    );
   }
 
   return (
@@ -206,7 +238,7 @@ export function BookingForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gender</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="Male">Male</SelectItem>
@@ -250,7 +282,7 @@ export function BookingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Seat Preference</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Preference" /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="No Preference">No Preference</SelectItem>
@@ -275,11 +307,28 @@ export function BookingForm() {
                           <Input
                             placeholder={loadingMembers ? "Loading reference members..." : "Type to search reference members"}
                             value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            disabled={loadingMembers}
+                            onChange={(e) => {
+                              setIsReferenceLocked(false);
+                              field.onChange(e.target.value);
+                            }}
+                            disabled={loadingMembers || isReferenceLocked}
                           />
 
-                          {!loadingMembers && referenceQuery.length > 0 && (
+                          {isReferenceLocked && (
+                            <div className="flex items-center justify-between rounded-md border bg-slate-50 px-3 py-2 text-sm">
+                              <span className="text-slate-600">Selected reference member</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsReferenceLocked(false)}
+                              >
+                                Change
+                              </Button>
+                            </div>
+                          )}
+
+                          {!loadingMembers && !isReferenceLocked && referenceQuery.length > 0 && (
                             <div className="max-h-40 overflow-y-auto rounded-md border bg-white p-1">
                               {filteredReferenceMembers.length > 0 ? (
                                 filteredReferenceMembers.map((member) => (
@@ -287,13 +336,18 @@ export function BookingForm() {
                                     key={member.id}
                                     type="button"
                                     className="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100"
-                                    onClick={() => field.onChange(member.name)}
+                                    onClick={() => {
+                                      field.onChange(member.name);
+                                      setIsReferenceLocked(true);
+                                    }}
                                   >
                                     {member.name}
                                   </button>
                                 ))
                               ) : (
-                                <p className="px-3 py-2 text-sm text-slate-500">No matches found</p>
+                                <p className="px-3 py-2 text-sm text-slate-500">
+                                  {hasExactReferenceMatch ? "Reference selected" : "No matches found. New name will be added on submit."}
+                                </p>
                               )}
                             </div>
                           )}
@@ -364,7 +418,7 @@ export function BookingForm() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs">Gender</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger></FormControl>
                               <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
@@ -382,7 +436,7 @@ export function BookingForm() {
                         render={({ field }) => (
                           <FormItem className="lg:col-span-2">
                             <FormLabel className="text-xs">Preference</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger><SelectValue placeholder="Preference" /></SelectTrigger></FormControl>
                               <SelectContent>
                                 <SelectItem value="No Preference">No</SelectItem>
@@ -435,7 +489,7 @@ export function BookingForm() {
                     <FormItem className="space-y-3">
                       <FormLabel>Booking Type</FormLabel>
                       <FormControl>
-                         <Tabs defaultValue={field.value} onValueChange={field.onChange} className="w-full max-w-md">
+                         <Tabs value={field.value} onValueChange={field.onChange} className="w-full max-w-md">
                           <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="online">Online Payment</TabsTrigger>
                             <TabsTrigger value="manual">Manual Booking</TabsTrigger>

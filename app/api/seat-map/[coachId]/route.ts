@@ -24,10 +24,14 @@ export async function GET(
         s.berth_type,
         s.is_reserved,
         s.is_booked,
-        p.name AS passenger_name
+        s.passenger_id,
+        s.group_member_id,
+        COALESCE(p.name, gm.name) AS passenger_name
       FROM seats s
       LEFT JOIN passengers p
         ON s.passenger_id = p.id
+      LEFT JOIN group_members gm
+        ON s.group_member_id = gm.id
       WHERE s.coach_id = $1
       ORDER BY s.seat_number ASC
     `,

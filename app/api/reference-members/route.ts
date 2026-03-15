@@ -1,14 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
 /**
  * GET /api/reference-members
  * Fetch all reference members
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
+    // Keep this endpoint self-healing in environments where this table wasn't migrated yet.
+    await query(`
+      CREATE TABLE IF NOT EXISTS reference_members (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+      )
+    `);
+
     const result = await query(
-      "SELECT id, name FROM reference_members ORDER BY name",
+      `
+      SELECT
+        MIN(id) AS id,
+        TRIM(name) AS name
+      FROM reference_members
+      WHERE COALESCE(TRIM(name), '') <> ''
+      GROUP BY LOWER(TRIM(name)), TRIM(name)
+      ORDER BY TRIM(name)
+      `,
     );
 
     return NextResponse.json(result.rows);

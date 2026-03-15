@@ -53,7 +53,8 @@ export async function DELETE(
       UPDATE seats
       SET
         is_booked = false,
-        passenger_id = NULL
+        passenger_id = NULL,
+        group_member_id = NULL
       WHERE id = $1
     `,
       [seatId],

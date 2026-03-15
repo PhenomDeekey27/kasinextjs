@@ -264,8 +264,18 @@ export async function initDatabase(): Promise<void> {
         coach_id INT REFERENCES coaches(id),
         is_booked BOOLEAN DEFAULT FALSE,
         is_reserved BOOLEAN DEFAULT FALSE,
-        passenger_id INT REFERENCES passengers(id)
+        passenger_id INT REFERENCES passengers(id),
+        group_member_id INT REFERENCES group_members(id)
       )
+      `,
+      );
+
+      // Backfill-safe migration for already existing databases.
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE seats
+      ADD COLUMN IF NOT EXISTS group_member_id INT REFERENCES group_members(id)
       `,
       );
 
@@ -306,7 +316,10 @@ export async function initDatabase(): Promise<void> {
       }
 
       console.log("Creating seats for all coaches...");
-      const coachResult = await queryWithClient(client, "SELECT id FROM coaches ORDER BY id");
+      const coachResult = await queryWithClient(
+        client,
+        "SELECT id FROM coaches ORDER BY id",
+      );
       const coaches = coachResult.rows;
 
       for (const coach of coaches) {

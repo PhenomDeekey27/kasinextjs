@@ -41,6 +41,10 @@ export async function POST(request: NextRequest) {
       group_members: groupMembersStr,
     } = fields as Record<string, string>;
 
+    const normalizedReferenceName = reference_name?.trim()
+      ? reference_name.trim()
+      : null;
+
     console.log("Parsed passenger fields:", {
       name,
       phone,
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
       gender,
       age,
       seat_preference,
-      reference_name,
+      reference_name: normalizedReferenceName,
       groupMembersStr,
     });
 
@@ -71,6 +75,21 @@ export async function POST(request: NextRequest) {
       console.log("Payment proof uploaded to Cloudinary:", paymentProofUrl);
     }
 
+    if (normalizedReferenceName) {
+      await client.query(
+        `
+        INSERT INTO reference_members (name)
+        SELECT $1
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM reference_members
+          WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+        )
+        `,
+        [normalizedReferenceName],
+      );
+    }
+
     console.log("Inserting passenger into DB...");
 
     const passengerResult = await client.query(
@@ -87,7 +106,7 @@ export async function POST(request: NextRequest) {
         gender,
         parsedAge,
         seat_preference,
-        reference_name,
+        normalizedReferenceName,
         paymentProofUrl,
       ],
     );
@@ -146,7 +165,7 @@ export async function POST(request: NextRequest) {
 
     if (seats.length < 1 + groupMembers.length) {
       throw new Error(
-        `Insufficient seats allocated: ${seats.length} out of ${1 + groupMembers.length} needed`
+        `Insufficient seats allocated: ${seats.length} out of ${1 + groupMembers.length} needed`,
       );
     }
 
@@ -172,7 +191,8 @@ export async function POST(request: NextRequest) {
       `
       UPDATE seats
       SET is_booked = true,
-          passenger_id = $1
+          passenger_id = $1,
+          group_member_id = NULL
       WHERE id = $2
       `,
       [passenger.id, mainSeat.id],
@@ -186,7 +206,7 @@ export async function POST(request: NextRequest) {
 
       if (!seat) {
         throw new Error(
-          `Seat missing for group member ${i + 1}: ${member.name}`
+          `Seat missing for group member ${i + 1}: ${member.name}`,
         );
       }
 
@@ -207,10 +227,12 @@ export async function POST(request: NextRequest) {
       await client.query(
         `
         UPDATE seats
-        SET is_booked = true
-        WHERE id = $1
+        SET is_booked = true,
+            passenger_id = NULL,
+            group_member_id = $1
+        WHERE id = $2
         `,
-        [seat.id],
+        [member.id, seat.id],
       );
     }
 
@@ -223,7 +245,7 @@ export async function POST(request: NextRequest) {
           phone: passenger.phone,
         },
         reviewReason || "Booking needs manual review",
-        1 + groupMembers.length
+        1 + groupMembers.length,
       );
     }
 
