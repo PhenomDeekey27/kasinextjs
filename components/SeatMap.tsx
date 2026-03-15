@@ -130,6 +130,7 @@ export function SeatMap() {
             <Select
               value={selectedCoachId?.toString() || ""}
               onValueChange={(val) => {
+                if (!val) return;
                 const coach = coaches.find((c) => c.id === parseInt(val));
                 if (coach) {
                   setSelectedCoachId(coach.id);

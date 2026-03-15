@@ -112,7 +112,7 @@ export default function BookingsPage() {
   const [bookingDetail, setBookingDetail] = useState<BookingDetail | null>(
     null,
   );
-  const [selectedStatus, setSelectedStatus] = useState<string | null>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   // Filter states
@@ -644,7 +644,7 @@ export default function BookingsPage() {
                 <div className="flex gap-3 items-center">
                   <Select
                     value={selectedStatus}
-                    onValueChange={setSelectedStatus}
+                    onValueChange={(value) => setSelectedStatus(value ?? "")}
                   >
                     <SelectTrigger className="flex-1 bg-white">
                       <SelectValue placeholder="Select status" />
