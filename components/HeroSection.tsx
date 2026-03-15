@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Train, Users, ShieldCheck, MessageSquare } from "lucide-react";
+import { Train, Users } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 
@@ -15,16 +15,6 @@ const features = [
     icon: Users,
     title: "Group Seating",
     description: "Automatic seat grouping for up to 8 members per request.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Secure Payments",
-    description: "Upload payment proofs for manual verification or reliable online gateways.",
-  },
-  {
-    icon: MessageSquare,
-    title: "WhatsApp Notifications",
-    description: "Get real-time booking confirmation and status on your mobile.",
   },
 ];
 
@@ -81,7 +71,7 @@ export function HeroSection() {
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-4">
+            <dl className="grid max-w-3xl mx-auto grid-cols-1 gap-x-10 gap-y-12 md:grid-cols-2">
               {features.map((feature, index) => (
                 <motion.div
                   key={feature.title}

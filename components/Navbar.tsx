@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { Train } from "lucide-react";
 import { Button } from "./ui/button";
 
 export function Navbar() {
@@ -10,7 +10,13 @@ export function Navbar() {
       <div className="container flex h-16 items-center mx-auto px-4 max-w-7xl">
         <div className="mr-8 hidden md:flex">
           <Link href="/" className="flex items-center space-x-2">
-            <Train className="h-6 w-6 text-blue-600" />
+            <Image
+              src="/logo.jpeg"
+              alt="J Tourism logo"
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-sm object-cover"
+            />
             <span className="hidden font-bold sm:inline-block text-lg">
               J Tourism
             </span>
@@ -20,7 +26,13 @@ export function Navbar() {
         {/* Mobile Logo */}
         <div className="flex flex-1 md:hidden">
             <Link href="/" className="flex items-center space-x-2">
-              <Train className="h-6 w-6 text-blue-600" />
+              <Image
+                src="/logo.jpeg"
+                alt="J Tourism logo"
+                width={28}
+                height={28}
+                className="h-7 w-7 rounded-sm object-cover"
+              />
               <span className="font-bold">J Tourism</span>
             </Link>
         </div>

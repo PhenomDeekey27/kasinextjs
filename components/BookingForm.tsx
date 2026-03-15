@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,7 +32,7 @@ import {
 } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { BERTH_TYPES, TRAIN_CONFIG } from "@/lib/constants";
-import { Train, Info, FileText, X } from "lucide-react";
+import { Info, FileText, X } from "lucide-react";
 import { BookingSuccess } from "./BookingSuccess";
 import { submitBooking, fetchReferenceMembers } from "@/lib/api";
 
@@ -223,7 +224,13 @@ export function BookingForm() {
     <Card className="w-full max-w-4xl mx-auto shadow-lg border-0 rounded-xl overflow-hidden">
       <div className="bg-blue-600 px-6 py-8 text-white">
         <div className="flex items-center space-x-3 mb-2">
-          <Train className="w-8 h-8" />
+          <Image
+            src="/logo.jpeg"
+            alt="J Tourism logo"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-md object-cover border border-white/30"
+          />
           <h2 className="text-2xl font-bold">Book Train Seats</h2>
         </div>
         <p className="text-blue-100 opacity-90">
