@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,9 +19,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { BERTH_TYPES, TRAIN_CONFIG } from "@/lib/constants";
-import { Train, Info, FileText } from "lucide-react";
+import { Train, Info, FileText, X } from "lucide-react";
 import { BookingSuccess } from "./BookingSuccess";
-import { submitBooking } from "@/lib/api";
+import { submitBooking, fetchReferenceMembers } from "@/lib/api";
 
 const passengerSchema = z.object({
   name: z.string().min(2, "Name is too short").max(50),
@@ -34,22 +34,46 @@ const formSchema = z.object({
   primaryPassenger: passengerSchema.extend({
     phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
     aadhaar: z.string().regex(/^\d{12}$/, "Aadhaar must be 12 digits"),
-    referenceMember: z.string().min(1, "Select reference member").optional(),
+    referenceMember: z.string().optional(),
   }),
   groupMembers: z.array(passengerSchema).max(TRAIN_CONFIG.MAX_GROUP_SIZE - 1, `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`),
   paymentMode: z.enum(["online", "manual"]),
   paymentAmount: z.coerce.number().min(1, "Amount is required"),
-  paymentProof: z.any().optional(), // In real app, validate File object
+  paymentProof: z.any().optional(), // Payment proof for online bookings
 });
 
 export type BookingFormValues = z.infer<typeof formSchema>;
 
-const REFERENCE_MEMBERS = ["John Doe", "Jane Smith", "Alex Kumar", "None"];
-
 export function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [referenceMembers, setReferenceMembers] = useState<Array<{id: number; name: string}>>([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
+  const [paymentUploadKey, setPaymentUploadKey] = useState(0);
   const { toast } = useToast();
+
+  // Load reference members on component mount
+  useEffect(() => {
+    const loadReferenceMembers = async () => {
+      try {
+        const members = await fetchReferenceMembers();
+        setReferenceMembers(members);
+      } catch (error) {
+        console.error("Failed to load reference members:", error);
+        // Fallback to empty list on error
+        setReferenceMembers([]);
+        toast({
+          title: "Warning",
+          description: "Could not load reference members list",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+    loadReferenceMembers();
+  }, [toast]);
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(formSchema) as any,
@@ -61,7 +85,7 @@ export function BookingForm() {
         seatPreference: "No Preference",
         phone: "",
         aadhaar: "",
-        referenceMember: "None", // default
+        referenceMember: "", // default
       },
       groupMembers: [],
       paymentMode: "online",
@@ -77,9 +101,14 @@ export function BookingForm() {
   const paymentMode = form.watch("paymentMode");
   const totalPassengers = 1 + memberFields.length;
 
+  const referenceQuery = (form.watch("primaryPassenger.referenceMember") || "").trim();
+  const filteredReferenceMembers = referenceMembers
+    .filter((member) => member.name.toLowerCase().includes(referenceQuery.toLowerCase()))
+    .slice(0, 12);
+
   const onSubmit = async (data: BookingFormValues) => {
-    // Validate custom rule: File upload required if online payment
-    if (data.paymentMode === "online" && !data.paymentProof) {
+    // Validation: Payment proof required for online payments
+    if (data.paymentMode === "online" && (!data.paymentProof || (data.paymentProof as FileList).length === 0)) {
       toast({
         title: "Payment Proof Required",
         description: "Please upload the payment screenshot for online bookings.",
@@ -90,16 +119,28 @@ export function BookingForm() {
 
     try {
       setIsSubmitting(true);
-      await submitBooking(data);
+      const response = await submitBooking(data);
       setIsSuccess(true);
       toast({
-        title: "Booking Submitted",
-        description: "Your seat request has been placed successfully.",
+        title: "Booking Submitted Successfully! ✓",
+        description: "Your seat request has been placed. You will receive a confirmation call shortly.",
+        variant: "default",
       });
-    } catch (error) {
+      console.log("Booking response:", response);
+    } catch (error: any) {
+      console.error("Booking submission error:", error);
+      
+      let errorMessage = "There was an error submitting your request. Please try again.";
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: "Booking Failed",
-        description: "There was an error submitting your request. Please try again.",
+        title: "Booking Failed ✗",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -229,14 +270,35 @@ export function BookingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Reference Member (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select Coordinator" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {REFERENCE_MEMBERS.map(member => (
-                            <SelectItem key={member} value={member}>{member}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <Input
+                            placeholder={loadingMembers ? "Loading reference members..." : "Type to search reference members"}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            disabled={loadingMembers}
+                          />
+
+                          {!loadingMembers && referenceQuery.length > 0 && (
+                            <div className="max-h-40 overflow-y-auto rounded-md border bg-white p-1">
+                              {filteredReferenceMembers.length > 0 ? (
+                                filteredReferenceMembers.map((member) => (
+                                  <button
+                                    key={member.id}
+                                    type="button"
+                                    className="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                    onClick={() => field.onChange(member.name)}
+                                  >
+                                    {member.name}
+                                  </button>
+                                ))
+                              ) : (
+                                <p className="px-3 py-2 text-sm text-slate-500">No matches found</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -361,9 +423,10 @@ export function BookingForm() {
             <div className="space-y-6">
               <div className="flex items-center space-x-2 border-b pb-2">
                 <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">3</span>
-                <h3 className="text-lg font-semibold text-slate-800">Payment Form</h3>
+                <h3 className="text-lg font-semibold text-slate-800">Payment</h3>
               </div>
 
+              {/* Payment Details */}
               <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
                 <FormField
                   control={form.control}
@@ -407,7 +470,7 @@ export function BookingForm() {
                         <FormItem>
                           <FormLabel>Payment Screenshot Proof</FormLabel>
                           <FormControl>
-                            <div className="flex items-center justify-center w-full">
+                            <div className="space-y-3">
                               <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                   <FileText className="w-8 h-8 mb-3 text-slate-400" />
@@ -415,12 +478,49 @@ export function BookingForm() {
                                   <p className="text-xs text-slate-500">PNG, JPG up to 5MB</p>
                                 </div>
                                 <Input 
+                                  key={paymentUploadKey}
                                   type="file" 
                                   className="hidden" 
                                   accept="image/*"
-                                  onChange={(e) => field.onChange(e.target.files)} 
+                                  onChange={(e) => {
+                                    field.onChange(e.target.files);
+                                    if (e.target.files && e.target.files[0]) {
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        setPaymentProofPreview(reader.result as string);
+                                      };
+                                      reader.readAsDataURL(e.target.files[0]);
+                                    }
+                                  }} 
                                 />
                               </label>
+
+                              {paymentProofPreview && (
+                                <div className="flex items-start gap-3 rounded-lg border bg-white p-3">
+                                  <img
+                                    src={paymentProofPreview}
+                                    alt="Payment proof preview"
+                                    className="h-20 w-20 rounded-md border object-cover"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-slate-700">Uploaded image preview</p>
+                                    <p className="text-xs text-slate-500">If this is wrong, remove it and upload again.</p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setPaymentProofPreview(null);
+                                      form.setValue("paymentProof", undefined);
+                                      setPaymentUploadKey((prev) => prev + 1);
+                                    }}
+                                    aria-label="Remove uploaded payment screenshot"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </FormControl>
                           <FormMessage />

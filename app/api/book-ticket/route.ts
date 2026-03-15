@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/db";
 import { allocateSeats } from "@/lib/services/seatAllocator";
 import { sendCoordinatorAlert } from "@/lib/services/alertService";
-import { uploadFile } from "@/lib/services/supabaseStorage";
+import { uploadToCloudinary } from "@/lib/services/cloudinaryStorage";
 import { parseFormData, fileToBuffer } from "@/lib/services/uploadService";
 
 interface GroupMember {
@@ -10,7 +10,8 @@ interface GroupMember {
   name: string;
   age: number;
   gender: string;
-  seat_preference: string;
+  seat_preference: string | null;
+  passenger_id: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -60,22 +61,14 @@ export async function POST(request: NextRequest) {
       throw new Error(`Invalid age value received: ${age}`);
     }
 
-    // Upload files
-    let aadhaarUrl: string | null = null;
+    // Upload payment proof to Cloudinary
     let paymentProofUrl: string | null = null;
 
-    if (files.aadhaar && files.aadhaar.length > 0) {
-      console.log("Uploading Aadhaar file...");
-      const aadhaarFile = await fileToBuffer(files.aadhaar[0]);
-      aadhaarUrl = await uploadFile(aadhaarFile, "aadhaar");
-      console.log("Aadhaar uploaded:", aadhaarUrl);
-    }
-
     if (files.payment_proof && files.payment_proof.length > 0) {
-      console.log("Uploading payment proof...");
+      console.log("Uploading payment proof to Cloudinary...");
       const paymentFile = await fileToBuffer(files.payment_proof[0]);
-      paymentProofUrl = await uploadFile(paymentFile, "payments");
-      console.log("Payment proof uploaded:", paymentProofUrl);
+      paymentProofUrl = await uploadToCloudinary(paymentFile, "payments");
+      console.log("Payment proof uploaded to Cloudinary:", paymentProofUrl);
     }
 
     console.log("Inserting passenger into DB...");
@@ -83,8 +76,8 @@ export async function POST(request: NextRequest) {
     const passengerResult = await client.query(
       `
       INSERT INTO passengers
-      (name, phone, aadhaar_number, gender, age, seat_preference, reference_name, aadhaar_url, payment_proof_url)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      (name, phone, aadhaar_number, gender, age, seat_preference, reference_name, payment_proof_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING *
       `,
       [
@@ -95,7 +88,6 @@ export async function POST(request: NextRequest) {
         parsedAge,
         seat_preference,
         reference_name,
-        aadhaarUrl,
         paymentProofUrl,
       ],
     );
@@ -152,6 +144,12 @@ export async function POST(request: NextRequest) {
       throw new Error("Seat allocation failed");
     }
 
+    if (seats.length < 1 + groupMembers.length) {
+      throw new Error(
+        `Insufficient seats allocated: ${seats.length} out of ${1 + groupMembers.length} needed`
+      );
+    }
+
     const bookings = [];
 
     const mainSeat = seats[0];
@@ -186,6 +184,12 @@ export async function POST(request: NextRequest) {
       const member = groupMembers[i];
       const seat = seats[i + 1];
 
+      if (!seat) {
+        throw new Error(
+          `Seat missing for group member ${i + 1}: ${member.name}`
+        );
+      }
+
       console.log("Assigning seat to group member:", member, seat);
 
       const booking = await client.query(
@@ -210,12 +214,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Trigger coordinator alert if needs_review
+    if (needsReview) {
+      console.log("📢 Sending coordinator alert for needs_review booking...");
+      sendCoordinatorAlert(
+        {
+          name: passenger.name,
+          phone: passenger.phone,
+        },
+        reviewReason || "Booking needs manual review",
+        1 + groupMembers.length
+      );
+    }
+
     await client.query("COMMIT");
 
     console.log("Booking transaction committed");
 
     return NextResponse.json({
       message: "Booking created successfully",
+      booking_id: bookings[0]?.id,
+      coach: mainSeat.coach_id,
+      seats: seats.map((s) => ({
+        seat_number: s.seat_number,
+        berth_type: s.berth_type,
+        coach_id: s.coach_id,
+      })),
+      needs_review: needsReview,
+      review_reason: reviewReason,
       bookings,
     });
   } catch (error) {

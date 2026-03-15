@@ -11,6 +11,178 @@ const SEAT_TYPES = [
   "side_upper",
 ] as const;
 
+const REFERENCE_MEMBERS = [
+  "Rajesh Kumar",
+  "Priya Sharma",
+  "Amit Patel",
+  "Neha Gupta",
+  "Rahul Singh",
+  "Anjali Verma",
+  "Vikram Rao",
+  "Deepika Nair",
+  "Arun Mishra",
+  "Divya Iyer",
+  "Sanjay Reddy",
+  "Pooja Kapoor",
+  "Arjun Menon",
+  "Radha Pillai",
+  "Nikhil Desai",
+  "Shreya Bhat",
+  "Rohan Joshi",
+  "Kavya Sinha",
+  "Ashok Verma",
+  "Meera Devi",
+  "Anand Rao",
+  "Harini Tamil",
+  "Karan Singh",
+  "Isha Sharma",
+  "Suresh Kumar",
+  "Nisha Gupta",
+  "Arpit Jain",
+  "Chithra Nambiar",
+  "Ravi Prakash",
+  "Ananya Mukherjee",
+  "Sameer Khan",
+  "Ritika Malhotra",
+  "Varun Chopra",
+  "Prerna Bhatt",
+  "Manoj Singh",
+  "Sneha Roy",
+  "Harsh Patel",
+  "Divyam Agrawal",
+  "Siddharth Verma",
+  "Sakshi Sharma",
+  "Raj Malhotra",
+  "Geetika Singh",
+  "Abhishek Nair",
+  "Aparna Mohan",
+  "Nitin Rao",
+  "Swati Jain",
+  "Tanuj Kapoor",
+  "Neelam Desai",
+  "Vipul Yadav",
+  "Pooja Singh",
+  "Manish Kumar",
+  "Anita Verma",
+  "Shravan Pillai",
+  "Leela Iyer",
+  "Akshay Reddy",
+  "Chandra Bhat",
+  "Roopa Sinha",
+  "Gautam Joshi",
+  "Harshita Tamil",
+  "Keshav Rao",
+  "Isha Nambiar",
+  "Ramesh Prakash",
+  "Anjum Khan",
+  "Siddesh Rao",
+  "Tara Sharma",
+  "Pranav Malhotra",
+  "Uma Devi",
+  "Vikas Patel",
+  "Vedavati Roy",
+  "Yash Agrawal",
+  "Yamini Singh",
+  "Shivam Kapoor",
+  "Yugandhar Verma",
+  "Zebu Iyer",
+  "Zainab Khan",
+  "Aakash Nair",
+  "Aadhya Mohan",
+  "Aatreya Yadav",
+  "Aavya Jain",
+  "Abhi Desai",
+  "Achal Pillai",
+  "Aditi Sharma",
+  "Aditya Roy",
+  "Afroz Khan",
+  "Agam Malhotra",
+  "Agni Verma",
+  "Agrawal Patel",
+  "Agrima Singh",
+  "Ahalya Reddy",
+  "Ahamiya Bhat",
+  "Ajay Sinha",
+  "Ajaya Joshi",
+  "Akanksha Tamil",
+  "Akanksha Rao",
+  "Akbar Nambiar",
+  "Akshara Prakash",
+  "Akshit Khan",
+  "Alaina Rao",
+  "Alanis Sharma",
+  "Alark Malhotra",
+  "Alarmel Devi",
+  "Alaya Patel",
+  "Albena Roy",
+  "Alden Agrawal",
+  "Alder Singh",
+  "Alec Kapoor",
+  "Alecia Verma",
+  "Aleen Iyer",
+  "Alena Mohan",
+  "Alenia Yadav",
+  "Aleris Jain",
+  "Aleron Desai",
+  "Alesa Pillai",
+  "Alesia Sharma",
+  "Aleta Row",
+  "Aletta Nair",
+  "Aleudin Khan",
+  "Alev Rao",
+  "Alexa Singh",
+  "Alexei Malhotra",
+  "Alexia Devi",
+  "Alexina Patel",
+  "Alexio Tamil",
+  "Alexios Joshi",
+  "Alexios Reddy",
+  "Alexis Bhat",
+  "Alexius Sinha",
+  "Alexya Khan",
+  "Alfian Rao",
+  "Alfira Sharma",
+  "Alfonsino Nambiar",
+  "Alfonzo Prakash",
+  "Alfreda Kapoor",
+  "Alfredo Verma",
+  "Algae Iyer",
+  "Alger Mohan",
+  "Algia Yadav",
+  "Algid Jain",
+  "Algie Desai Pillai",
+  "Algis Sharma",
+  "Algitha Roy",
+  "Algot Agrawal",
+  "Algrim Singh",
+  "Alguaine Malhotra",
+  "Alhagi Verma",
+  "Alhassan Iyer",
+  "Alhaua Mohan",
+  "Alhaw Yadav",
+  "Alheah Jain",
+  "Alheah Desai",
+  "Alheary Pillai",
+  "Alheary Sharma",
+  "Alheaty Roy",
+  "Alheda Agrawal",
+  "Alheir Singh",
+  "Alheka Malhotra",
+  "Alhela Verma",
+  "Alhele Iyer",
+  "Alhelia Mohan",
+  "Alhelie Yadav",
+  "Alhelis Jain",
+  "Alhelix Desai",
+  "Alhemira Pillai",
+  "Alhena Sharma",
+  "Alhenaj Roy",
+  "Alhenald Agrawal",
+  "Alhenari Singh",
+  "Alhenassa Malhotra",
+  "Alhenat Verma",
+];
+
 let initRunPromise: Promise<void> | null = null;
 
 export async function initDatabase(): Promise<void> {
@@ -26,6 +198,17 @@ export async function initDatabase(): Promise<void> {
     try {
       await client.query("BEGIN");
 
+      console.log("Ensuring reference_members table exists...");
+      await queryWithClient(
+        client,
+        `
+      CREATE TABLE IF NOT EXISTS reference_members (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+      )
+      `,
+      );
+
       console.log("Ensuring passengers table exists...");
       await queryWithClient(
         client,
@@ -39,7 +222,6 @@ export async function initDatabase(): Promise<void> {
         age INT,
         seat_preference TEXT,
         reference_name TEXT,
-        aadhaar_url TEXT,
         payment_proof_url TEXT
       )
       `,
@@ -105,39 +287,71 @@ export async function initDatabase(): Promise<void> {
       `,
       );
 
-      console.log("Ensuring default coach exists...");
+      console.log("Creating 18 coaches...");
+      for (let i = 1; i <= 18; i++) {
+        const coachNum = i.toString().padStart(2, "0");
+        const coachId = `A${coachNum}`;
+
+        await queryWithClient(
+          client,
+          `
+        INSERT INTO coaches (coach_number)
+        SELECT $1
+        WHERE NOT EXISTS (SELECT 1 FROM coaches WHERE coach_number = $1)
+        `,
+          [coachId],
+        );
+
+        console.log(`  ✓ Coach ${coachId} ensured`);
+      }
+
+      console.log("Creating seats for all coaches...");
+      const coachResult = await queryWithClient(client, "SELECT id FROM coaches ORDER BY id");
+      const coaches = coachResult.rows;
+
+      for (const coach of coaches) {
+        await queryWithClient(
+          client,
+          `
+        INSERT INTO seats (seat_number, berth_type, coach_id)
+        SELECT
+          series.seat_number,
+          seat_types.berth_type,
+          $1::INT
+        FROM generate_series(1, 72) AS series(seat_number)
+        CROSS JOIN LATERAL (
+          SELECT ($2::text[])[((series.seat_number - 1) % 8) + 1] AS berth_type
+        ) AS seat_types
+        WHERE NOT EXISTS (SELECT 1 FROM seats WHERE coach_id = $1)
+        `,
+          [coach.id, SEAT_TYPES],
+        );
+      }
+
+      console.log("Marking reserved seats (3, 35, 70) in all coaches...");
       await queryWithClient(
         client,
         `
-      INSERT INTO coaches (coach_number)
-      SELECT 'A1'
-      WHERE NOT EXISTS (SELECT 1 FROM coaches)
+      UPDATE seats
+      SET is_reserved = true
+      WHERE seat_number IN (3, 35, 70)
       `,
       );
 
-      console.log("Ensuring default seats exist...");
-      await queryWithClient(
-        client,
-        `
-      INSERT INTO seats (seat_number, berth_type, coach_id)
-      SELECT
-        series.seat_number,
-        seat_types.berth_type,
-        coach.id
-      FROM generate_series(1, 72) AS series(seat_number)
-      CROSS JOIN LATERAL (
-        SELECT id
-        FROM coaches
-        ORDER BY id ASC
-        LIMIT 1
-      ) AS coach
-      CROSS JOIN LATERAL (
-        SELECT ($1::text[])[((series.seat_number - 1) % 8) + 1] AS berth_type
-      ) AS seat_types
-      WHERE NOT EXISTS (SELECT 1 FROM seats)
-      `,
-        [SEAT_TYPES],
-      );
+      console.log("Seeding reference members...");
+      for (const memberName of REFERENCE_MEMBERS) {
+        await queryWithClient(
+          client,
+          `
+        INSERT INTO reference_members (name)
+        VALUES ($1)
+        ON CONFLICT (name) DO NOTHING
+        `,
+          [memberName],
+        );
+      }
+
+      console.log(`  ✓ Seeded ${REFERENCE_MEMBERS.length} reference members`);
 
       await client.query("COMMIT");
       console.log("Database initialization complete.");
