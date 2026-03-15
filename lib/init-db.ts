@@ -287,6 +287,8 @@ export async function initDatabase(): Promise<void> {
         id SERIAL PRIMARY KEY,
         passenger_id INT REFERENCES passengers(id),
         group_member_id INT REFERENCES group_members(id),
+        passenger_name TEXT,
+        group_member_name TEXT,
         seat_id INT REFERENCES seats(id),
         coach_id INT REFERENCES coaches(id),
         booking_status TEXT,
@@ -294,6 +296,51 @@ export async function initDatabase(): Promise<void> {
         review_reason TEXT,
         booked_at TIMESTAMPTZ DEFAULT NOW()
       )
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE bookings
+      ADD COLUMN IF NOT EXISTS passenger_name TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE bookings
+      ADD COLUMN IF NOT EXISTS group_member_name TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      UPDATE bookings b
+      SET passenger_name = p.name
+      FROM passengers p
+      WHERE b.passenger_id = p.id
+        AND (b.passenger_name IS NULL OR TRIM(b.passenger_name) = '')
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      UPDATE bookings b
+      SET group_member_name = gm.name,
+          passenger_name = COALESCE(b.passenger_name, p.name)
+      FROM group_members gm
+      LEFT JOIN passengers p ON p.id = gm.passenger_id
+      WHERE b.group_member_id = gm.id
+        AND (
+          b.group_member_name IS NULL
+          OR TRIM(b.group_member_name) = ''
+          OR b.passenger_name IS NULL
+          OR TRIM(b.passenger_name) = ''
+        )
       `,
       );
 

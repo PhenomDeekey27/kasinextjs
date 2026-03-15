@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
     const result = await query(`
       SELECT
         b.id AS booking_id,
-        COALESCE(p.name, gm.name) AS passenger_name,
+        COALESCE(b.group_member_name, b.passenger_name, p.name, gm.name) AS passenger_name,
+        COALESCE(b.passenger_name, p.name) AS main_passenger_name,
+        b.group_member_name,
         COALESCE(p.phone, 'N/A') AS phone,
         c.coach_number,
         s.seat_number,

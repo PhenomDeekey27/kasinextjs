@@ -178,11 +178,18 @@ export async function POST(request: NextRequest) {
     const mainBooking = await client.query(
       `
       INSERT INTO bookings
-      (passenger_id, seat_id, coach_id, booking_status, needs_review, review_reason)
-      VALUES ($1,$2,$3,'pending_verification',$4,$5)
+      (passenger_id, passenger_name, seat_id, coach_id, booking_status, needs_review, review_reason)
+      VALUES ($1,$2,$3,$4,'pending_verification',$5,$6)
       RETURNING *
       `,
-      [passenger.id, mainSeat.id, mainSeat.coach_id, needsReview, reviewReason],
+      [
+        passenger.id,
+        passenger.name,
+        mainSeat.id,
+        mainSeat.coach_id,
+        needsReview,
+        reviewReason,
+      ],
     );
 
     bookings.push(mainBooking.rows[0]);
@@ -215,11 +222,19 @@ export async function POST(request: NextRequest) {
       const booking = await client.query(
         `
         INSERT INTO bookings
-        (group_member_id, seat_id, coach_id, booking_status, needs_review, review_reason)
-        VALUES ($1,$2,$3,'pending_verification',$4,$5)
+        (group_member_id, passenger_name, group_member_name, seat_id, coach_id, booking_status, needs_review, review_reason)
+        VALUES ($1,$2,$3,$4,$5,'pending_verification',$6,$7)
         RETURNING *
         `,
-        [member.id, seat.id, seat.coach_id, needsReview, reviewReason],
+        [
+          member.id,
+          passenger.name,
+          member.name,
+          seat.id,
+          seat.coach_id,
+          needsReview,
+          reviewReason,
+        ],
       );
 
       bookings.push(booking.rows[0]);

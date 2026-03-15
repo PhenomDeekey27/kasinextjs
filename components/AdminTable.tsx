@@ -49,10 +49,15 @@ export function AdminTable({ data: initialData, onAction }: AdminTableProps) {
       await verifyPayment(id);
       setData((prevData) =>
         prevData.map((booking) =>
-          booking.id === id ? { ...booking, status: "Verified" as const, needsReview: false } : booking
-        )
+          booking.id === id
+            ? { ...booking, status: "Verified" as const, needsReview: false }
+            : booking,
+        ),
       );
-      toast({ title: "Payment Verified", description: `Booking ID ${id} is successfully verified.` });
+      toast({
+        title: "Payment Verified",
+        description: `Booking ID ${id} is successfully verified.`,
+      });
       if (onAction) onAction("verify", id);
     } catch (e) {
       toast({ title: "Action Failed", variant: "destructive" });
@@ -62,28 +67,44 @@ export function AdminTable({ data: initialData, onAction }: AdminTableProps) {
   const handleCancel = (id: string) => {
     setData((prevData) =>
       prevData.map((booking) =>
-        booking.id === id ? { ...booking, status: "Cancelled" as const } : booking
-      )
+        booking.id === id
+          ? { ...booking, status: "Cancelled" as const }
+          : booking,
+      ),
     );
-     toast({ title: "Booking Cancelled", description: `Booking ID ${id} is cancelled.`, variant: "destructive" });
-     if (onAction) onAction("cancel", id);
+    toast({
+      title: "Booking Cancelled",
+      description: `Booking ID ${id} is cancelled.`,
+      variant: "destructive",
+    });
+    if (onAction) onAction("cancel", id);
   };
 
   const columns: ColumnDef<BookingData>[] = [
     {
       accessorKey: "passengerName",
       header: "Passenger",
-      cell: ({ row }) => <div className="font-semibold text-slate-800">{row.getValue("passengerName")}</div>,
+      cell: ({ row }) => (
+        <div className="font-semibold text-slate-800">
+          {row.getValue("passengerName")}
+        </div>
+      ),
     },
     {
       accessorKey: "phone",
       header: "Phone",
-      cell: ({ row }) => <div className="text-slate-600 font-mono text-sm">{row.getValue("phone")}</div>,
+      cell: ({ row }) => (
+        <div className="text-slate-600 font-mono text-sm">
+          {row.getValue("phone")}
+        </div>
+      ),
     },
     {
       accessorKey: "referenceMember",
       header: "Coordinator",
-      cell: ({ row }) => <div className="text-slate-600">{row.getValue("referenceMember")}</div>,
+      cell: ({ row }) => (
+        <div className="text-slate-600">{row.getValue("referenceMember")}</div>
+      ),
     },
     {
       accessorKey: "seats",
@@ -97,7 +118,11 @@ export function AdminTable({ data: initialData, onAction }: AdminTableProps) {
     {
       accessorKey: "coach",
       header: "Coach/Berth",
-      cell: ({ row }) => <div className="font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded-md inline-block text-xs font-bold">{row.getValue("coach")}</div>,
+      cell: ({ row }) => (
+        <div className="font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded-md inline-block text-xs font-bold">
+          {row.getValue("coach")}
+        </div>
+      ),
     },
     {
       accessorKey: "amountPaid",
@@ -113,7 +138,9 @@ export function AdminTable({ data: initialData, onAction }: AdminTableProps) {
       cell: ({ row }) => {
         const due = parseFloat(row.getValue("balance"));
         return (
-          <div className={`font-medium ${due > 0 ? "text-amber-600" : "text-slate-400"}`}>
+          <div
+            className={`font-medium ${due > 0 ? "text-amber-600" : "text-slate-400"}`}
+          >
             ₹{due}
           </div>
         );
@@ -144,24 +171,29 @@ export function AdminTable({ data: initialData, onAction }: AdminTableProps) {
 
         return (
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="icon" title="View Details" className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="View Details"
+              className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+            >
               <Eye className="h-4 w-4" />
             </Button>
             {booking.status === "Pending" && (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  title="Verify Payment" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Verify Payment"
                   className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
                   onClick={() => handleVerify(booking.id)}
                 >
                   <CheckCircle className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  title="Cancel Booking" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Cancel Booking"
                   className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
                   onClick={() => handleCancel(booking.id)}
                 >
@@ -191,12 +223,15 @@ export function AdminTable({ data: initialData, onAction }: AdminTableProps) {
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="text-slate-600 font-semibold h-12">
+                    <TableHead
+                      key={header.id}
+                      className="text-slate-600 font-semibold h-12"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -216,7 +251,7 @@ export function AdminTable({ data: initialData, onAction }: AdminTableProps) {
                     <TableCell key={cell.id} className="py-3">
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}

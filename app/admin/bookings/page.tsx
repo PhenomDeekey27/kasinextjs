@@ -46,6 +46,7 @@ interface Booking {
   booking_id: number;
   passenger_id: number;
   main_passenger_name: string;
+  group_member_names: string[];
   phone: string;
   reference_name: string | null;
   seat_numbers: number[];
@@ -111,7 +112,7 @@ export default function BookingsPage() {
   const [bookingDetail, setBookingDetail] = useState<BookingDetail | null>(
     null,
   );
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string | null>("");
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   // Filter states
@@ -143,6 +144,7 @@ export default function BookingsPage() {
       params.append("sortBy", sortBy);
       params.append("sortOrder", sortOrder);
 
+      if (searchTerm.trim()) params.append("search", searchTerm.trim());
       if (filters.status) params.append("status", filters.status);
       if (filters.needsReview)
         params.append("needsReview", filters.needsReview);
@@ -174,8 +176,12 @@ export default function BookingsPage() {
   };
 
   useEffect(() => {
-    fetchBookings(1);
-  }, [filters, sortBy, sortOrder]);
+    const timeoutId = setTimeout(() => {
+      fetchBookings(1);
+    }, 250);
+
+    return () => clearTimeout(timeoutId);
+  }, [filters, sortBy, sortOrder, searchTerm]);
 
   const handleFilterChange = (key: string, value: string | null) => {
     setFilters((prev) => ({
@@ -275,14 +281,6 @@ export default function BookingsPage() {
     }
   };
 
-  const filteredBookings = bookings.filter(
-    (booking) =>
-      booking.main_passenger_name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      booking.phone.includes(searchTerm),
-  );
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -316,7 +314,7 @@ export default function BookingsPage() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
-                  placeholder="Search by name or phone..."
+                  placeholder="Search by main passenger, group member, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -435,7 +433,7 @@ export default function BookingsPage() {
               <Loader2 className="w-8 h-8 animate-spin" />
               <span className="ml-3 font-medium">Loading bookings...</span>
             </div>
-          ) : filteredBookings.length === 0 ? (
+          ) : bookings.length === 0 ? (
             <div className="text-center p-12">
               <p className="text-slate-500 font-medium">No bookings found</p>
               <p className="text-sm text-slate-400">
@@ -461,7 +459,7 @@ export default function BookingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredBookings.map((booking) => (
+                    {bookings.map((booking) => (
                       <TableRow
                         key={booking.booking_id}
                         className="hover:bg-slate-50 cursor-pointer"
@@ -471,7 +469,12 @@ export default function BookingsPage() {
                           #{booking.booking_id}
                         </TableCell>
                         <TableCell className="font-medium text-slate-900">
-                          {booking.main_passenger_name}
+                          <div>{booking.main_passenger_name}</div>
+                          {booking.group_member_names.length > 0 && (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Group: {booking.group_member_names.join(", ")}
+                            </p>
+                          )}
                           {booking.total_passengers > 1 && (
                             <span className="ml-2 text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
                               +{booking.total_passengers - 1} more

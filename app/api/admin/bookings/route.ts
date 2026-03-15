@@ -5,6 +5,7 @@ interface BookingRecord {
   booking_id: number;
   passenger_id: number;
   main_passenger_name: string;
+  group_member_names: string[];
   phone: string;
   reference_name: string | null;
   seat_numbers: number[];
@@ -29,6 +30,7 @@ interface BookingRecord {
  * Query parameters:
  * - page: number (default: 1)
  * - limit: number (default: 10)
+ * - search: string
  * - status: string (pending_verification, confirmed, cancelled)
  * - needsReview: boolean (true/false)
  * - sortBy: string (booked_at, passenger_name, status)
@@ -47,6 +49,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Filter parameters
+    const search = searchParams.get("search")?.trim();
     const status = searchParams.get("status");
     const needsReview = searchParams.get("needsReview");
     const startDate = searchParams.get("startDate");
@@ -59,6 +62,29 @@ export async function GET(request: NextRequest) {
     // Build WHERE clause
     let whereConditions: string[] = [];
     const params: any[] = [];
+
+    if (search) {
+      whereConditions.push(`(
+        EXISTS (
+          SELECT 1
+          FROM bookings b_search
+          WHERE (
+            b_search.passenger_id = p.id
+            OR b_search.group_member_id IN (
+              SELECT gm_search.id
+              FROM group_members gm_search
+              WHERE gm_search.passenger_id = p.id
+            )
+          )
+          AND (
+            COALESCE(b_search.passenger_name, '') ILIKE $${params.length + 1}
+            OR COALESCE(b_search.group_member_name, '') ILIKE $${params.length + 1}
+          )
+        )
+        OR COALESCE(p.phone, '') ILIKE $${params.length + 1}
+      )`);
+      params.push(`%${search}%`);
+    }
 
     if (status) {
       whereConditions.push(`b.booking_status = $${params.length + 1}`);
@@ -119,7 +145,11 @@ export async function GET(request: NextRequest) {
         SELECT
           MIN(b.id) AS booking_id,
           p.id AS passenger_id,
-          p.name AS main_passenger_name,
+          COALESCE(MAX(NULLIF(TRIM(b.passenger_name), '')), p.name) AS main_passenger_name,
+          COALESCE(
+            ARRAY_REMOVE(ARRAY_AGG(DISTINCT NULLIF(TRIM(b.group_member_name), '')), NULL),
+            ARRAY[]::TEXT[]
+          ) AS group_member_names,
           p.phone,
           NULLIF(TRIM(p.reference_name), '') AS reference_name,
           COALESCE(ARRAY_AGG(s.seat_number ORDER BY s.seat_number), ARRAY[]::INT[]) AS seat_numbers,
@@ -170,6 +200,12 @@ export async function GET(request: NextRequest) {
       booking_id: Number(row.booking_id),
       passenger_id: Number(row.passenger_id),
       main_passenger_name: row.main_passenger_name,
+      group_member_names: Array.isArray(row.group_member_names)
+        ? row.group_member_names.filter(
+            (name: unknown): name is string =>
+              typeof name === "string" && name.trim().length > 0,
+          )
+        : [],
       phone: row.phone,
       reference_name: row.reference_name,
       seat_numbers: Array.isArray(row.seat_numbers)
@@ -199,6 +235,7 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit),
       },
       filters: {
+        search,
         status,
         needsReview,
         startDate,

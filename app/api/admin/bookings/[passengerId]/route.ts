@@ -28,7 +28,7 @@ export async function GET(
       `
       SELECT
         p.id                                                        AS passenger_id,
-        p.name                                                      AS main_passenger_name,
+        COALESCE(MAX(NULLIF(TRIM(b.passenger_name), '')), p.name)   AS main_passenger_name,
         p.phone,
         p.aadhaar_number,
         p.gender,
@@ -52,7 +52,7 @@ export async function GET(
           JSON_AGG(
             JSON_BUILD_OBJECT(
               'booking_id',    b.id,
-              'passenger_name', COALESCE(gm.name, p.name),
+              'passenger_name', COALESCE(NULLIF(TRIM(b.group_member_name), ''), NULLIF(TRIM(b.passenger_name), ''), gm.name, p.name),
               'seat_number',   s.seat_number,
               'berth_type',    s.berth_type,
               'coach_number',  co.coach_number,
