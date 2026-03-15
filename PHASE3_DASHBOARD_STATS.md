@@ -9,9 +9,11 @@ Real-time dashboard statistics are now fetching live data from the database inst
 ## **What Was Implemented**
 
 ### **1. Dashboard Stats API**
+
 **Endpoint:** `/api/admin/dashboard-stats`
 
 **Response:**
+
 ```json
 {
   "totalSeats": 1296,
@@ -23,18 +25,21 @@ Real-time dashboard statistics are now fetching live data from the database inst
 ```
 
 **Database Queries:**
+
 - **Total Seats**: Constant from TRAIN_CONFIG (1296)
 - **Booked Seats**: `COUNT(*) FROM seats WHERE is_booked = true`
 - **Pending Verification**: `COUNT(*) FROM bookings WHERE booking_status = 'pending_verification'`
 - **Needs Review**: `COUNT(*) FROM bookings WHERE needs_review = true`
 
 ### **2. Updated StatsCards Component**
+
 - Fetches data from API on mount
 - Auto-refreshes every 30 seconds
 - Shows loading state ("...") while fetching
 - Displays real-time values with smooth transitions
 
 ### **3. Enhanced Dashboard Page**
+
 - Added Quick Actions section (links to bookings, review, seat map)
 - Added System Status section showing:
   - Database Connection
@@ -57,18 +62,22 @@ Real-time dashboard statistics are now fetching live data from the database inst
 ## **Key Features**
 
 ✅ **Real-time Data**
+
 - Stats update every 30 seconds automatically
 - Manual refresh when needed
 
 ✅ **Loading States**
+
 - "..." shows while data is loading
 - Smooth opacity changes
 
 ✅ **Database Optimized**
+
 - Efficient COUNT queries
 - Indexes on relevant columns
 
 ✅ **User Experience**
+
 - Quick action links on dashboard
 - System status indicators
 - Visual feedback during loading
@@ -96,6 +105,7 @@ curl http://localhost:3000/api/admin/dashboard-stats
 ## **How It Works**
 
 ### **Data Flow**
+
 ```
 Dashboard Page
     ↓
@@ -127,10 +137,10 @@ The StatsCards component automatically refreshes data every 30 seconds:
 ```typescript
 useEffect(() => {
   fetchStats();
-  
+
   // Refresh every 30 seconds
   const interval = setInterval(fetchStats, 30000);
-  
+
   // Cleanup on unmount
   return () => clearInterval(interval);
 }, []);
@@ -141,6 +151,7 @@ useEffect(() => {
 ## **Next Steps**
 
 **Phase 4** will implement:
+
 - Enhanced bookings table with real data
 - Pagination & sorting
 - Advanced filtering (by status, date, coach, etc.)
@@ -160,16 +171,19 @@ useEffect(() => {
 ## **Troubleshooting**
 
 **Stats show "..." permanently:**
+
 - Check `/api/admin/dashboard-stats` endpoint manually
 - Verify database connection is working
 - Check browser console for errors
 
 **Stats not updating every 30 seconds:**
+
 - Verify JavaScript enabled in browser
 - Check browser DevTools Network tab for API calls
 - Clear browser cache
 
 **Wrong numbers showing:**
+
 - Check database directly for actual counts
 - Verify booking_status values are correct
 - Check needs_review boolean values

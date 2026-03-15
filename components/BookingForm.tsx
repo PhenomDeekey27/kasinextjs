@@ -14,9 +14,21 @@ import {
   FormMessage,
 } from "./ui/form";
 import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { BERTH_TYPES, TRAIN_CONFIG } from "@/lib/constants";
 import { Train, Info, FileText, X } from "lucide-react";
@@ -36,7 +48,12 @@ const formSchema = z.object({
     aadhaar: z.string().regex(/^\d{12}$/, "Aadhaar must be 12 digits"),
     referenceMember: z.string().optional(),
   }),
-  groupMembers: z.array(passengerSchema).max(TRAIN_CONFIG.MAX_GROUP_SIZE - 1, `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`),
+  groupMembers: z
+    .array(passengerSchema)
+    .max(
+      TRAIN_CONFIG.MAX_GROUP_SIZE - 1,
+      `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`,
+    ),
   paymentMode: z.enum(["online", "manual"]),
   paymentAmount: z.coerce.number().min(1, "Amount is required"),
   paymentProof: z.any().optional(), // Payment proof for online bookings
@@ -47,10 +64,14 @@ export type BookingFormValues = z.infer<typeof formSchema>;
 export function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [referenceMembers, setReferenceMembers] = useState<Array<{id: number; name: string}>>([]);
+  const [referenceMembers, setReferenceMembers] = useState<
+    Array<{ id: number; name: string }>
+  >([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [isReferenceLocked, setIsReferenceLocked] = useState(false);
-  const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(
+    null,
+  );
   const [paymentUploadKey, setPaymentUploadKey] = useState(0);
   const { toast } = useToast();
 
@@ -94,7 +115,11 @@ export function BookingForm() {
     },
   });
 
-  const { fields: memberFields, append: appendMember, remove: removeMember } = useFieldArray({
+  const {
+    fields: memberFields,
+    append: appendMember,
+    remove: removeMember,
+  } = useFieldArray({
     control: form.control,
     name: "groupMembers",
   });
@@ -102,12 +127,16 @@ export function BookingForm() {
   const paymentMode = form.watch("paymentMode");
   const totalPassengers = 1 + memberFields.length;
 
-  const referenceQuery = (form.watch("primaryPassenger.referenceMember") || "").trim();
+  const referenceQuery = (
+    form.watch("primaryPassenger.referenceMember") || ""
+  ).trim();
   const hasExactReferenceMatch = referenceMembers.some(
     (member) => member.name.toLowerCase() === referenceQuery.toLowerCase(),
   );
   const filteredReferenceMembers = referenceMembers
-    .filter((member) => member.name.toLowerCase().includes(referenceQuery.toLowerCase()))
+    .filter((member) =>
+      member.name.toLowerCase().includes(referenceQuery.toLowerCase()),
+    )
     .slice(0, 12);
 
   const resetBookingForm = () => {
@@ -133,10 +162,14 @@ export function BookingForm() {
 
   const onSubmit = async (data: BookingFormValues) => {
     // Validation: Payment proof required for online payments
-    if (data.paymentMode === "online" && (!data.paymentProof || (data.paymentProof as FileList).length === 0)) {
+    if (
+      data.paymentMode === "online" &&
+      (!data.paymentProof || (data.paymentProof as FileList).length === 0)
+    ) {
       toast({
         title: "Payment Proof Required",
-        description: "Please upload the payment screenshot for online bookings.",
+        description:
+          "Please upload the payment screenshot for online bookings.",
         variant: "destructive",
       });
       return;
@@ -148,21 +181,23 @@ export function BookingForm() {
       setIsSuccess(true);
       toast({
         title: "Booking Submitted Successfully! ✓",
-        description: "Your seat request has been placed. You will receive a confirmation call shortly.",
+        description:
+          "Your seat request has been placed. You will receive a confirmation call shortly.",
         variant: "default",
       });
       console.log("Booking response:", response);
     } catch (error: any) {
       console.error("Booking submission error:", error);
-      
-      let errorMessage = "There was an error submitting your request. Please try again.";
-      
+
+      let errorMessage =
+        "There was an error submitting your request. Please try again.";
+
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Booking Failed ✗",
         description: errorMessage,
@@ -199,14 +234,17 @@ export function BookingForm() {
       <CardContent className="p-6 sm:p-8 bg-slate-50">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
-            
             {/* 1. Primary Passenger Details */}
             <div className="space-y-6">
               <div className="flex items-center space-x-2 border-b pb-2">
-                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">1</span>
-                <h3 className="text-lg font-semibold text-slate-800">Primary Passenger Details</h3>
+                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                  1
+                </span>
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Primary Passenger Details
+                </h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -214,12 +252,14 @@ export function BookingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
-                      <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -227,7 +267,9 @@ export function BookingForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Age</FormLabel>
-                        <FormControl><Input type="number" placeholder="30" {...field} /></FormControl>
+                        <FormControl>
+                          <Input type="number" placeholder="30" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -238,8 +280,15 @@ export function BookingForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gender</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger></FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Gender" />
+                            </SelectTrigger>
+                          </FormControl>
                           <SelectContent>
                             <SelectItem value="Male">Male</SelectItem>
                             <SelectItem value="Female">Female</SelectItem>
@@ -258,7 +307,9 @@ export function BookingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
-                      <FormControl><Input placeholder="9876543210" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="9876543210" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -270,7 +321,9 @@ export function BookingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Aadhaar Number</FormLabel>
-                      <FormControl><Input placeholder="1234 5678 9012" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="1234 5678 9012" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -282,12 +335,23 @@ export function BookingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Seat Preference</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Preference" /></SelectTrigger></FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Preference" />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
-                          <SelectItem value="No Preference">No Preference</SelectItem>
+                          <SelectItem value="No Preference">
+                            No Preference
+                          </SelectItem>
                           {Object.entries(BERTH_TYPES).map(([key, value]) => (
-                            <SelectItem key={key} value={key}>{value} ({key})</SelectItem>
+                            <SelectItem key={key} value={key}>
+                              {value} ({key})
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -305,7 +369,11 @@ export function BookingForm() {
                       <FormControl>
                         <div className="space-y-2">
                           <Input
-                            placeholder={loadingMembers ? "Loading reference members..." : "Type to search reference members"}
+                            placeholder={
+                              loadingMembers
+                                ? "Loading reference members..."
+                                : "Type to search reference members"
+                            }
                             value={field.value || ""}
                             onChange={(e) => {
                               setIsReferenceLocked(false);
@@ -316,7 +384,9 @@ export function BookingForm() {
 
                           {isReferenceLocked && (
                             <div className="flex items-center justify-between rounded-md border bg-slate-50 px-3 py-2 text-sm">
-                              <span className="text-slate-600">Selected reference member</span>
+                              <span className="text-slate-600">
+                                Selected reference member
+                              </span>
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -328,29 +398,33 @@ export function BookingForm() {
                             </div>
                           )}
 
-                          {!loadingMembers && !isReferenceLocked && referenceQuery.length > 0 && (
-                            <div className="max-h-40 overflow-y-auto rounded-md border bg-white p-1">
-                              {filteredReferenceMembers.length > 0 ? (
-                                filteredReferenceMembers.map((member) => (
-                                  <button
-                                    key={member.id}
-                                    type="button"
-                                    className="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100"
-                                    onClick={() => {
-                                      field.onChange(member.name);
-                                      setIsReferenceLocked(true);
-                                    }}
-                                  >
-                                    {member.name}
-                                  </button>
-                                ))
-                              ) : (
-                                <p className="px-3 py-2 text-sm text-slate-500">
-                                  {hasExactReferenceMatch ? "Reference selected" : "No matches found. New name will be added on submit."}
-                                </p>
-                              )}
-                            </div>
-                          )}
+                          {!loadingMembers &&
+                            !isReferenceLocked &&
+                            referenceQuery.length > 0 && (
+                              <div className="max-h-40 overflow-y-auto rounded-md border bg-white p-1">
+                                {filteredReferenceMembers.length > 0 ? (
+                                  filteredReferenceMembers.map((member) => (
+                                    <button
+                                      key={member.id}
+                                      type="button"
+                                      className="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                      onClick={() => {
+                                        field.onChange(member.name);
+                                        setIsReferenceLocked(true);
+                                      }}
+                                    >
+                                      {member.name}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <p className="px-3 py-2 text-sm text-slate-500">
+                                    {hasExactReferenceMatch
+                                      ? "Reference selected"
+                                      : "No matches found. New name will be added on submit."}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -364,8 +438,12 @@ export function BookingForm() {
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center space-x-2">
-                  <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">2</span>
-                  <h3 className="text-lg font-semibold text-slate-800">Group Members</h3>
+                  <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                    2
+                  </span>
+                  <h3 className="text-lg font-semibold text-slate-800">
+                    Group Members
+                  </h3>
                 </div>
                 <div className="text-sm text-slate-500 font-medium">
                   Total: {totalPassengers} / {TRAIN_CONFIG.MAX_GROUP_SIZE}
@@ -374,81 +452,108 @@ export function BookingForm() {
 
               {memberFields.length === 0 && (
                 <div className="text-center py-6 bg-white border border-dashed rounded-lg">
-                  <p className="text-slate-500 mb-4">Are you traveling with family or friends?</p>
+                  <p className="text-slate-500 mb-4">
+                    Are you traveling with family or friends?
+                  </p>
                 </div>
               )}
 
               {memberFields.map((field, index) => (
-                <div key={field.id} className="relative p-6 bg-white border rounded-xl shadow-sm mb-4">
-                  <button 
-                    type="button" 
+                <div
+                  key={field.id}
+                  className="relative p-6 bg-white border rounded-xl shadow-sm mb-4"
+                >
+                  <button
+                    type="button"
                     onClick={() => removeMember(index)}
                     className="absolute top-4 right-4 text-slate-400 hover:text-red-500 text-sm font-semibold transition"
                   >
                     Remove
                   </button>
-                  <h4 className="font-semibold text-slate-700 mb-4 text-sm uppercase tracking-wider">Member {index + 1}</h4>
-                  
+                  <h4 className="font-semibold text-slate-700 mb-4 text-sm uppercase tracking-wider">
+                    Member {index + 1}
+                  </h4>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                     <FormField
-                        control={form.control}
-                        name={`groupMembers.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="lg:col-span-2">
-                            <FormLabel className="text-xs">Name</FormLabel>
-                            <FormControl><Input placeholder="Name" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`groupMembers.${index}.age`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Age</FormLabel>
-                            <FormControl><Input type="number" placeholder="Age" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`groupMembers.${index}.gender`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Gender</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl><SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="Male">Male</SelectItem>
-                                <SelectItem value="Female">Female</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`groupMembers.${index}.seatPreference`}
-                        render={({ field }) => (
-                          <FormItem className="lg:col-span-2">
-                            <FormLabel className="text-xs">Preference</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl><SelectTrigger><SelectValue placeholder="Preference" /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="No Preference">No</SelectItem>
-                                {Object.entries(BERTH_TYPES).map(([key]) => (
-                                  <SelectItem key={key} value={key}>{key}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <FormField
+                      control={form.control}
+                      name={`groupMembers.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2">
+                          <FormLabel className="text-xs">Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`groupMembers.${index}.age`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Age</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="Age" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`groupMembers.${index}.gender`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Gender</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Male">Male</SelectItem>
+                              <SelectItem value="Female">Female</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`groupMembers.${index}.seatPreference`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2">
+                          <FormLabel className="text-xs">Preference</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Preference" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="No Preference">No</SelectItem>
+                              {Object.entries(BERTH_TYPES).map(([key]) => (
+                                <SelectItem key={key} value={key}>
+                                  {key}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
               ))}
@@ -459,12 +564,17 @@ export function BookingForm() {
                 className="w-full border-dashed border-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-colors"
                 onClick={() => {
                   if (totalPassengers < TRAIN_CONFIG.MAX_GROUP_SIZE) {
-                    appendMember({ name: "", age: 0, gender: "Male", seatPreference: "No Preference" });
+                    appendMember({
+                      name: "",
+                      age: 0,
+                      gender: "Male",
+                      seatPreference: "No Preference",
+                    });
                   } else {
                     toast({
                       title: "Group Full",
                       description: `Available seats are less than the requested group size. Please contact our coordinator at +91 9000000000`,
-                      variant: "destructive"
+                      variant: "destructive",
                     });
                   }
                 }}
@@ -476,8 +586,12 @@ export function BookingForm() {
             {/* 3. Payment Details */}
             <div className="space-y-6">
               <div className="flex items-center space-x-2 border-b pb-2">
-                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">3</span>
-                <h3 className="text-lg font-semibold text-slate-800">Payment</h3>
+                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                  3
+                </span>
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Payment
+                </h3>
               </div>
 
               {/* Payment Details */}
@@ -489,10 +603,18 @@ export function BookingForm() {
                     <FormItem className="space-y-3">
                       <FormLabel>Booking Type</FormLabel>
                       <FormControl>
-                         <Tabs value={field.value} onValueChange={field.onChange} className="w-full max-w-md">
+                        <Tabs
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="w-full max-w-md"
+                        >
                           <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="online">Online Payment</TabsTrigger>
-                            <TabsTrigger value="manual">Manual Booking</TabsTrigger>
+                            <TabsTrigger value="online">
+                              Online Payment
+                            </TabsTrigger>
+                            <TabsTrigger value="manual">
+                              Manual Booking
+                            </TabsTrigger>
                           </TabsList>
                         </Tabs>
                       </FormControl>
@@ -509,7 +631,11 @@ export function BookingForm() {
                       <FormItem>
                         <FormLabel>Amount Paying Today (₹)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="e.g. 5000" {...field} />
+                          <Input
+                            type="number"
+                            placeholder="e.g. 5000"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -528,24 +654,33 @@ export function BookingForm() {
                               <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                   <FileText className="w-8 h-8 mb-3 text-slate-400" />
-                                  <p className="mb-2 text-sm text-slate-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                  <p className="text-xs text-slate-500">PNG, JPG up to 5MB</p>
+                                  <p className="mb-2 text-sm text-slate-500">
+                                    <span className="font-semibold">
+                                      Click to upload
+                                    </span>{" "}
+                                    or drag and drop
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    PNG, JPG up to 5MB
+                                  </p>
                                 </div>
-                                <Input 
+                                <Input
                                   key={paymentUploadKey}
-                                  type="file" 
-                                  className="hidden" 
+                                  type="file"
+                                  className="hidden"
                                   accept="image/*"
                                   onChange={(e) => {
                                     field.onChange(e.target.files);
                                     if (e.target.files && e.target.files[0]) {
                                       const reader = new FileReader();
                                       reader.onloadend = () => {
-                                        setPaymentProofPreview(reader.result as string);
+                                        setPaymentProofPreview(
+                                          reader.result as string,
+                                        );
                                       };
                                       reader.readAsDataURL(e.target.files[0]);
                                     }
-                                  }} 
+                                  }}
                                 />
                               </label>
 
@@ -557,8 +692,13 @@ export function BookingForm() {
                                     className="h-20 w-20 rounded-md border object-cover"
                                   />
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium text-slate-700">Uploaded image preview</p>
-                                    <p className="text-xs text-slate-500">If this is wrong, remove it and upload again.</p>
+                                    <p className="text-sm font-medium text-slate-700">
+                                      Uploaded image preview
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      If this is wrong, remove it and upload
+                                      again.
+                                    </p>
                                   </div>
                                   <Button
                                     type="button"
@@ -583,18 +723,22 @@ export function BookingForm() {
                     />
                   )}
                 </div>
-                
+
                 {paymentMode === "manual" && (
                   <div className="bg-amber-50 rounded-lg p-4 flex items-start space-x-3 text-amber-800">
                     <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm">You selected manual booking. Your seats will be held temporarily. Our coordinators will contact you soon for offline payment processing.</p>
+                    <p className="text-sm">
+                      You selected manual booking. Your seats will be held
+                      temporarily. Our coordinators will contact you soon for
+                      offline payment processing.
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-14 text-lg font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 shadow-md transition-all hover:scale-[1.01]"
               disabled={isSubmitting}
             >

@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
 
     // Pagination parameters
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10")));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") || "10")),
+    );
     const offset = (page - 1) * limit;
 
     // Filter parameters
@@ -78,7 +81,10 @@ export async function GET(request: NextRequest) {
       params.push(endDate);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
 
     // Build ORDER BY
     const sortOrderSafe = sortOrder === "ASC" ? "ASC" : "DESC";
@@ -167,7 +173,9 @@ export async function GET(request: NextRequest) {
       phone: row.phone,
       reference_name: row.reference_name,
       seat_numbers: Array.isArray(row.seat_numbers)
-        ? row.seat_numbers.map((seat: unknown) => Number(seat)).filter((seat: number) => !Number.isNaN(seat))
+        ? row.seat_numbers
+            .map((seat: unknown) => Number(seat))
+            .filter((seat: number) => !Number.isNaN(seat))
         : [],
       seat_assignments: Array.isArray(row.seat_assignments)
         ? row.seat_assignments
@@ -201,7 +209,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching bookings:", error);
     return NextResponse.json(
       { error: "Failed to fetch bookings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

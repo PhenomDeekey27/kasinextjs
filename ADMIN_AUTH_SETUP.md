@@ -83,6 +83,7 @@ Replace `USER_UUID_FROM_AUTH` with the user ID from Supabase Auth.
 Test login at: `http://localhost:3000/admin/login`
 
 **Test Credentials:**
+
 - Email: `admin@jtourism.com` (your admin email)
 - Password: (password you set)
 
@@ -91,19 +92,23 @@ Test login at: `http://localhost:3000/admin/login`
 ### **Security Features Implemented**
 
 ✅ **Middleware Protection**
+
 - All `/admin/*` routes protected by middleware
 - Redirects unauthenticated users to login with redirect URL
 
 ✅ **Secure Cookies**
+
 - Auth token stored in httpOnly cookie (not accessible via JS)
 - Cookie secured with SameSite and Secure flags
 - 7-day expiration
 
 ✅ **Session Validation**
+
 - `/api/auth/me` endpoint validates session
 - Admin layout checks auth on load
 
 ✅ **Role-based Access**
+
 - `isAdmin()` function checks admin status
 - Can extend for different admin roles later
 
@@ -136,16 +141,19 @@ Test login at: `http://localhost:3000/admin/login`
 ### **Troubleshooting**
 
 **"Login failed" error:**
+
 - Check EMAIL exists in Supabase Auth
 - Verify password is correct
 - Ensure `NEXT_PUBLIC_SUPABASE_URL` and keys are correct in `.env.local`
 
 **Redirects to login after logging in:**
+
 - Supabase cookie not being set properly
 - Check browser cookies are enabled
 - Verify secure cookie settings match your environment (dev vs prod)
 
 **"Not authenticated" on protected routes:**
+
 - Cookie may have expired (7 days)
 - Clear browser cookies and login again
 - Check middleware.ts is in root of project

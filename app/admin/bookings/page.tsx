@@ -1,10 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Search, Filter, ChevronRight, User, Phone, CreditCard, Calendar, MapPin, AlertTriangle, Image as ImageIcon, Save } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Filter,
+  ChevronRight,
+  User,
+  Phone,
+  CreditCard,
+  Calendar,
+  MapPin,
+  AlertTriangle,
+  Image as ImageIcon,
+  Save,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -89,7 +108,9 @@ export default function BookingsPage() {
   // Detail modal state
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [bookingDetail, setBookingDetail] = useState<BookingDetail | null>(null);
+  const [bookingDetail, setBookingDetail] = useState<BookingDetail | null>(
+    null,
+  );
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [statusUpdating, setStatusUpdating] = useState(false);
 
@@ -123,7 +144,8 @@ export default function BookingsPage() {
       params.append("sortOrder", sortOrder);
 
       if (filters.status) params.append("status", filters.status);
-      if (filters.needsReview) params.append("needsReview", filters.needsReview);
+      if (filters.needsReview)
+        params.append("needsReview", filters.needsReview);
       if (filters.startDate) params.append("startDate", filters.startDate);
       if (filters.endDate) params.append("endDate", filters.endDate);
 
@@ -184,11 +206,19 @@ export default function BookingsPage() {
         setBookingDetail(data);
         setSelectedStatus(data.booking_status);
       } else {
-        toast({ title: "Error", description: "Failed to load booking details", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "Failed to load booking details",
+          variant: "destructive",
+        });
         setDetailOpen(false);
       }
     } catch {
-      toast({ title: "Error", description: "Failed to load booking details", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to load booking details",
+        variant: "destructive",
+      });
       setDetailOpen(false);
     } finally {
       setDetailLoading(false);
@@ -196,17 +226,23 @@ export default function BookingsPage() {
   };
 
   const handleStatusUpdate = async () => {
-    if (!bookingDetail || selectedStatus === bookingDetail.booking_status) return;
+    if (!bookingDetail || selectedStatus === bookingDetail.booking_status)
+      return;
     setStatusUpdating(true);
     try {
-      const res = await fetch(`/api/admin/bookings/${bookingDetail.passenger_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: selectedStatus }),
-      });
+      const res = await fetch(
+        `/api/admin/bookings/${bookingDetail.passenger_id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: selectedStatus }),
+        },
+      );
       if (res.ok) {
         // Update detail modal
-        setBookingDetail((prev) => prev ? { ...prev, booking_status: selectedStatus } : prev);
+        setBookingDetail((prev) =>
+          prev ? { ...prev, booking_status: selectedStatus } : prev,
+        );
         // Update the row in the table list
         setBookings((prev) =>
           prev.map((b) =>
@@ -215,21 +251,36 @@ export default function BookingsPage() {
               : b,
           ),
         );
-        toast({ title: "Status updated", description: `Booking status changed to "${STATUS_LABELS[selectedStatus] ?? selectedStatus}"` });
+        toast({
+          title: "Status updated",
+          description: `Booking status changed to "${STATUS_LABELS[selectedStatus] ?? selectedStatus}"`,
+        });
       } else {
         const err = await res.json().catch(() => ({}));
-        toast({ title: "Error", description: (err as { error?: string }).error || "Failed to update status", variant: "destructive" });
+        toast({
+          title: "Error",
+          description:
+            (err as { error?: string }).error || "Failed to update status",
+          variant: "destructive",
+        });
       }
     } catch {
-      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive",
+      });
     } finally {
       setStatusUpdating(false);
     }
   };
 
-  const filteredBookings = bookings.filter((booking) =>
-    booking.main_passenger_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    booking.phone.includes(searchTerm)
+  const filteredBookings = bookings.filter(
+    (booking) =>
+      booking.main_passenger_name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      booking.phone.includes(searchTerm),
   );
 
   const getStatusColor = (status: string) => {
@@ -249,7 +300,9 @@ export default function BookingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">All Bookings</h1>
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+          All Bookings
+        </h1>
         <p className="mt-1 text-slate-500">
           Manage passenger seat requests and verify payments.
         </p>
@@ -283,14 +336,23 @@ export default function BookingsPage() {
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1 block">Status</label>
-                  <Select value={filters.status || ""} onValueChange={(value) => handleFilterChange("status", value)}>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Status
+                  </label>
+                  <Select
+                    value={filters.status || ""}
+                    onValueChange={(value) =>
+                      handleFilterChange("status", value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">All statuses</SelectItem>
-                      <SelectItem value="pending_verification">Pending Verification</SelectItem>
+                      <SelectItem value="pending_verification">
+                        Pending Verification
+                      </SelectItem>
                       <SelectItem value="confirmed">Confirmed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
@@ -298,8 +360,15 @@ export default function BookingsPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1 block">Needs Review</label>
-                  <Select value={filters.needsReview || ""} onValueChange={(value) => handleFilterChange("needsReview", value)}>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Needs Review
+                  </label>
+                  <Select
+                    value={filters.needsReview || ""}
+                    onValueChange={(value) =>
+                      handleFilterChange("needsReview", value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
@@ -312,20 +381,28 @@ export default function BookingsPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1 block">Start Date</label>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Start Date
+                  </label>
                   <Input
                     type="date"
                     value={filters.startDate}
-                    onChange={(e) => handleFilterChange("startDate", e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("startDate", e.target.value)
+                    }
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1 block">End Date</label>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    End Date
+                  </label>
                   <Input
                     type="date"
                     value={filters.endDate}
-                    onChange={(e) => handleFilterChange("endDate", e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("endDate", e.target.value)
+                    }
                   />
                 </div>
 
@@ -361,7 +438,9 @@ export default function BookingsPage() {
           ) : filteredBookings.length === 0 ? (
             <div className="text-center p-12">
               <p className="text-slate-500 font-medium">No bookings found</p>
-              <p className="text-sm text-slate-400">Try adjusting your filters or search terms</p>
+              <p className="text-sm text-slate-400">
+                Try adjusting your filters or search terms
+              </p>
             </div>
           ) : (
             <>
@@ -408,18 +487,28 @@ export default function BookingsPage() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {booking.seat_numbers.map((seat) => (
-                              <Badge key={seat} variant="outline" className="bg-slate-50">
+                              <Badge
+                                key={seat}
+                                variant="outline"
+                                className="bg-slate-50"
+                              >
                                 {seat}
                               </Badge>
                             ))}
                           </div>
                           {booking.seat_assignments?.length > 0 && (
                             <div className="mt-2 space-y-1">
-                              {booking.seat_assignments.map((assignment, index) => (
-                                <p key={`${assignment.passenger_name}-${assignment.seat_number}-${index}`} className="text-xs text-slate-500">
-                                  {assignment.passenger_name}: Seat {assignment.seat_number}
-                                </p>
-                              ))}
+                              {booking.seat_assignments.map(
+                                (assignment, index) => (
+                                  <p
+                                    key={`${assignment.passenger_name}-${assignment.seat_number}-${index}`}
+                                    className="text-xs text-slate-500"
+                                  >
+                                    {assignment.passenger_name}: Seat{" "}
+                                    {assignment.seat_number}
+                                  </p>
+                                ),
+                              )}
                             </div>
                           )}
                         </TableCell>
@@ -427,12 +516,18 @@ export default function BookingsPage() {
                           {booking.coach_number}
                         </TableCell>
                         <TableCell>
-                          <Badge className={`border ${getStatusColor(booking.booking_status)}`}>
+                          <Badge
+                            className={`border ${getStatusColor(booking.booking_status)}`}
+                          >
                             {booking.booking_status.replace("_", " ")}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={booking.needs_review ? "destructive" : "outline"}>
+                          <Badge
+                            variant={
+                              booking.needs_review ? "destructive" : "outline"
+                            }
+                          >
                             {booking.needs_review ? "Yes" : "No"}
                           </Badge>
                         </TableCell>
@@ -451,7 +546,8 @@ export default function BookingsPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between mt-6 pt-6 border-t">
                 <div className="text-sm text-slate-600">
-                  Page {pagination.page} of {pagination.pages} ({pagination.total} total)
+                  Page {pagination.page} of {pagination.pages} (
+                  {pagination.total} total)
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -462,20 +558,27 @@ export default function BookingsPage() {
                     Previous
                   </Button>
                   <div className="flex items-center gap-2">
-                    {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
-                      const pageNum = i + 1;
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={pagination.page === pageNum ? "default" : "outline"}
-                          onClick={() => fetchBookings(pageNum)}
-                          disabled={loading}
-                          size="sm"
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
+                    {Array.from(
+                      { length: Math.min(5, pagination.pages) },
+                      (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={
+                              pagination.page === pageNum
+                                ? "default"
+                                : "outline"
+                            }
+                            onClick={() => fetchBookings(pageNum)}
+                            disabled={loading}
+                            size="sm"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      },
+                    )}
                   </div>
                   <Button
                     variant="outline"
@@ -508,14 +611,21 @@ export default function BookingsPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold text-slate-900">
-                  Booking #{bookingDetail.booking_id} — {bookingDetail.main_passenger_name}
+                  Booking #{bookingDetail.booking_id} —{" "}
+                  {bookingDetail.main_passenger_name}
                 </DialogTitle>
                 <div className="flex gap-2 mt-1 flex-wrap">
-                  <Badge className={`border ${getStatusColor(bookingDetail.booking_status)}`}>
-                    {STATUS_LABELS[bookingDetail.booking_status] ?? bookingDetail.booking_status}
+                  <Badge
+                    className={`border ${getStatusColor(bookingDetail.booking_status)}`}
+                  >
+                    {STATUS_LABELS[bookingDetail.booking_status] ??
+                      bookingDetail.booking_status}
                   </Badge>
                   {bookingDetail.needs_review && (
-                    <Badge variant="destructive" className="flex items-center gap-1">
+                    <Badge
+                      variant="destructive"
+                      className="flex items-center gap-1"
+                    >
                       <AlertTriangle className="w-3 h-3" />
                       Needs Review
                     </Badge>
@@ -525,21 +635,31 @@ export default function BookingsPage() {
 
               {/* Status Update */}
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
-                <p className="text-sm font-semibold text-slate-700">Update Booking Status</p>
+                <p className="text-sm font-semibold text-slate-700">
+                  Update Booking Status
+                </p>
                 <div className="flex gap-3 items-center">
-                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <Select
+                    value={selectedStatus}
+                    onValueChange={setSelectedStatus}
+                  >
                     <SelectTrigger className="flex-1 bg-white">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending_verification">Pending Verification</SelectItem>
+                      <SelectItem value="pending_verification">
+                        Pending Verification
+                      </SelectItem>
                       <SelectItem value="confirmed">Confirmed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
                     onClick={handleStatusUpdate}
-                    disabled={statusUpdating || selectedStatus === bookingDetail.booking_status}
+                    disabled={
+                      statusUpdating ||
+                      selectedStatus === bookingDetail.booking_status
+                    }
                     className="flex items-center gap-2 shrink-0"
                   >
                     {statusUpdating ? (
@@ -552,29 +672,38 @@ export default function BookingsPage() {
                 </div>
                 {selectedStatus !== bookingDetail.booking_status && (
                   <p className="text-xs text-amber-600">
-                    Changing from <strong>{STATUS_LABELS[bookingDetail.booking_status]}</strong> to{" "}
-                    <strong>{STATUS_LABELS[selectedStatus]}</strong>. This will update all
-                    related records and seat availability.
+                    Changing from{" "}
+                    <strong>
+                      {STATUS_LABELS[bookingDetail.booking_status]}
+                    </strong>{" "}
+                    to <strong>{STATUS_LABELS[selectedStatus]}</strong>. This
+                    will update all related records and seat availability.
                   </p>
                 )}
               </div>
 
               {/* Passenger Info */}
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-slate-700 border-b pb-1">Passenger Information</p>
+                <p className="text-sm font-semibold text-slate-700 border-b pb-1">
+                  Passenger Information
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="flex items-start gap-2">
                     <User className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs text-slate-500">Full Name</p>
-                      <p className="font-medium text-slate-800">{bookingDetail.main_passenger_name}</p>
+                      <p className="font-medium text-slate-800">
+                        {bookingDetail.main_passenger_name}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <Phone className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs text-slate-500">Phone</p>
-                      <p className="font-medium text-slate-800 font-mono">{bookingDetail.phone}</p>
+                      <p className="font-medium text-slate-800 font-mono">
+                        {bookingDetail.phone}
+                      </p>
                     </div>
                   </div>
                   {bookingDetail.aadhaar_number && (
@@ -582,7 +711,9 @@ export default function BookingsPage() {
                       <CreditCard className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                       <div>
                         <p className="text-xs text-slate-500">Aadhaar</p>
-                        <p className="font-medium text-slate-800 font-mono">{bookingDetail.aadhaar_number}</p>
+                        <p className="font-medium text-slate-800 font-mono">
+                          {bookingDetail.aadhaar_number}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -592,7 +723,12 @@ export default function BookingsPage() {
                       <div>
                         <p className="text-xs text-slate-500">Gender / Age</p>
                         <p className="font-medium text-slate-800">
-                          {[bookingDetail.gender, bookingDetail.age != null ? `${bookingDetail.age} yrs` : null]
+                          {[
+                            bookingDetail.gender,
+                            bookingDetail.age != null
+                              ? `${bookingDetail.age} yrs`
+                              : null,
+                          ]
                             .filter(Boolean)
                             .join(" · ")}
                         </p>
@@ -604,7 +740,9 @@ export default function BookingsPage() {
                       <User className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                       <div>
                         <p className="text-xs text-slate-500">Coordinator</p>
-                        <p className="font-medium text-slate-800">{bookingDetail.reference_name}</p>
+                        <p className="font-medium text-slate-800">
+                          {bookingDetail.reference_name}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -612,7 +750,9 @@ export default function BookingsPage() {
                     <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs text-slate-500">Coach</p>
-                      <p className="font-medium text-slate-800 font-mono">{bookingDetail.coach_number}</p>
+                      <p className="font-medium text-slate-800 font-mono">
+                        {bookingDetail.coach_number}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
@@ -631,27 +771,48 @@ export default function BookingsPage() {
               {bookingDetail.seat_assignments.length > 0 && (
                 <div className="space-y-3">
                   <p className="text-sm font-semibold text-slate-700 border-b pb-1">
-                    Seat Assignments ({bookingDetail.total_passengers} passenger{bookingDetail.total_passengers !== 1 ? "s" : ""})
+                    Seat Assignments ({bookingDetail.total_passengers} passenger
+                    {bookingDetail.total_passengers !== 1 ? "s" : ""})
                   </p>
                   <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-50 text-slate-600">
                         <tr>
-                          <th className="text-left px-3 py-2 font-medium">Passenger</th>
-                          <th className="text-left px-3 py-2 font-medium">Seat</th>
-                          <th className="text-left px-3 py-2 font-medium">Berth</th>
-                          <th className="text-left px-3 py-2 font-medium">Age</th>
-                          <th className="text-left px-3 py-2 font-medium">Gender</th>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Passenger
+                          </th>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Seat
+                          </th>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Berth
+                          </th>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Age
+                          </th>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Gender
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {bookingDetail.seat_assignments.map((a, i) => (
                           <tr key={i} className="bg-white">
-                            <td className="px-3 py-2 font-medium text-slate-800">{a.passenger_name}</td>
-                            <td className="px-3 py-2 font-mono text-blue-700 font-semibold">{a.seat_number}</td>
-                            <td className="px-3 py-2 text-slate-600 capitalize">{a.berth_type ?? "—"}</td>
-                            <td className="px-3 py-2 text-slate-600">{a.age != null ? `${a.age} yrs` : "—"}</td>
-                            <td className="px-3 py-2 text-slate-600 capitalize">{a.gender ?? "—"}</td>
+                            <td className="px-3 py-2 font-medium text-slate-800">
+                              {a.passenger_name}
+                            </td>
+                            <td className="px-3 py-2 font-mono text-blue-700 font-semibold">
+                              {a.seat_number}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 capitalize">
+                              {a.berth_type ?? "—"}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600">
+                              {a.age != null ? `${a.age} yrs` : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 capitalize">
+                              {a.gender ?? "—"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -665,9 +826,13 @@ export default function BookingsPage() {
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-3">
                   <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-amber-800">Flagged for Review</p>
+                    <p className="text-sm font-semibold text-amber-800">
+                      Flagged for Review
+                    </p>
                     {bookingDetail.review_reason && (
-                      <p className="mt-1 text-sm text-amber-700">{bookingDetail.review_reason}</p>
+                      <p className="mt-1 text-sm text-amber-700">
+                        {bookingDetail.review_reason}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -676,15 +841,23 @@ export default function BookingsPage() {
               {/* Payment Proof */}
               {bookingDetail.payment_proof_url ? (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-700 border-b pb-1">Payment Proof</p>
-                  <a href={bookingDetail.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                  <p className="text-sm font-semibold text-slate-700 border-b pb-1">
+                    Payment Proof
+                  </p>
+                  <a
+                    href={bookingDetail.payment_proof_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={bookingDetail.payment_proof_url}
                       alt="Payment proof"
                       className="max-h-64 rounded-lg border border-slate-200 object-contain w-full hover:opacity-90 transition-opacity"
                     />
-                    <p className="text-xs text-slate-400 mt-1 text-center">Click to open full size</p>
+                    <p className="text-xs text-slate-400 mt-1 text-center">
+                      Click to open full size
+                    </p>
                   </a>
                 </div>
               ) : (

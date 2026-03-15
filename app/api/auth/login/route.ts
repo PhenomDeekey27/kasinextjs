@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email and password are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -19,16 +19,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
     if (!data.session) {
       return NextResponse.json(
         { error: "No session created" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -54,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.error("Login error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

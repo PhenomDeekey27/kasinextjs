@@ -5,7 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Train } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
@@ -103,7 +110,11 @@ export default function AdminLogin() {
             </div>
           </CardContent>
           <CardFooter className="pb-8">
-            <Button className="w-full bg-slate-900 hover:bg-slate-800 h-12 text-md" type="submit" disabled={loading}>
+            <Button
+              className="w-full bg-slate-900 hover:bg-slate-800 h-12 text-md"
+              type="submit"
+              disabled={loading}
+            >
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </CardFooter>

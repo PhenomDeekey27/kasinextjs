@@ -82,7 +82,10 @@ export function StatsCards() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       {statsConfig.map((stat, i) => (
-        <Card key={i} className="border-0 shadow-md hover:shadow-lg transition-shadow">
+        <Card
+          key={i}
+          className="border-0 shadow-md hover:shadow-lg transition-shadow"
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-slate-500">
               {stat.title}
@@ -92,12 +95,12 @@ export function StatsCards() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold text-slate-800 transition-opacity ${loading && i > 0 ? "opacity-50" : ""}`}>
+            <div
+              className={`text-3xl font-bold text-slate-800 transition-opacity ${loading && i > 0 ? "opacity-50" : ""}`}
+            >
               {stat.value}
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              {stat.description}
-            </p>
+            <p className="text-xs text-slate-400 mt-1">{stat.description}</p>
           </CardContent>
         </Card>
       ))}

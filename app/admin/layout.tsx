@@ -3,7 +3,17 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Train, LayoutDashboard, Users, Grid, AlertTriangle, LogOut, Menu, X, User } from "lucide-react";
+import {
+  Train,
+  LayoutDashboard,
+  Users,
+  Grid,
+  AlertTriangle,
+  LogOut,
+  Menu,
+  X,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 

@@ -18,7 +18,10 @@ export async function GET(
     const pid = parseInt(passengerId);
 
     if (isNaN(pid)) {
-      return NextResponse.json({ error: "Invalid passenger ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid passenger ID" },
+        { status: 400 },
+      );
     }
 
     const result = await query(
@@ -86,23 +89,23 @@ export async function GET(
 
     const row = result.rows[0];
     return NextResponse.json({
-      passenger_id:        Number(row.passenger_id),
-      booking_id:          Number(row.booking_id),
+      passenger_id: Number(row.passenger_id),
+      booking_id: Number(row.booking_id),
       main_passenger_name: row.main_passenger_name,
-      phone:               row.phone,
-      aadhaar_number:      row.aadhaar_number,
-      gender:              row.gender,
-      age:                 row.age != null ? Number(row.age) : null,
-      seat_preference:     row.seat_preference,
-      reference_name:      row.reference_name,
-      payment_proof_url:   row.payment_proof_url,
-      booking_status:      row.booking_status || "pending_verification",
-      needs_review:        Boolean(row.needs_review),
-      review_reason:       row.review_reason,
-      booked_at:           row.booked_at,
-      total_passengers:    Number(row.total_passengers) || 0,
-      coach_number:        row.coach_number || "N/A",
-      seat_numbers:        Array.isArray(row.seat_numbers)
+      phone: row.phone,
+      aadhaar_number: row.aadhaar_number,
+      gender: row.gender,
+      age: row.age != null ? Number(row.age) : null,
+      seat_preference: row.seat_preference,
+      reference_name: row.reference_name,
+      payment_proof_url: row.payment_proof_url,
+      booking_status: row.booking_status || "pending_verification",
+      needs_review: Boolean(row.needs_review),
+      review_reason: row.review_reason,
+      booked_at: row.booked_at,
+      total_passengers: Number(row.total_passengers) || 0,
+      coach_number: row.coach_number || "N/A",
+      seat_numbers: Array.isArray(row.seat_numbers)
         ? row.seat_numbers.map((n: unknown) => Number(n))
         : [],
       seat_assignments: Array.isArray(row.seat_assignments)
@@ -113,11 +116,18 @@ export async function GET(
     });
   } catch (error) {
     console.error("Error fetching booking detail:", error);
-    return NextResponse.json({ error: "Failed to fetch booking detail" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch booking detail" },
+      { status: 500 },
+    );
   }
 }
 
-const VALID_STATUSES = ["pending_verification", "confirmed", "cancelled"] as const;
+const VALID_STATUSES = [
+  "pending_verification",
+  "confirmed",
+  "cancelled",
+] as const;
 type BookingStatus = (typeof VALID_STATUSES)[number];
 
 /**
@@ -136,7 +146,10 @@ export async function PATCH(
     const pid = parseInt(passengerId);
 
     if (isNaN(pid)) {
-      return NextResponse.json({ error: "Invalid passenger ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid passenger ID" },
+        { status: 400 },
+      );
     }
 
     const body = await request.json();
@@ -144,7 +157,9 @@ export async function PATCH(
 
     if (!VALID_STATUSES.includes(newStatus as BookingStatus)) {
       return NextResponse.json(
-        { error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` },
+        {
+          error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+        },
         { status: 400 },
       );
     }
@@ -221,7 +236,10 @@ export async function PATCH(
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error updating booking status:", error);
-    return NextResponse.json({ error: "Failed to update booking status" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update booking status" },
+      { status: 500 },
+    );
   } finally {
     client.release();
   }
