@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import axios from "axios";
 import { Button } from "./ui/button";
 import {
   Form,
@@ -31,7 +32,8 @@ import {
   CardTitle,
 } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { BERTH_TYPES, TRAIN_CONFIG } from "@/lib/constants";
+import { BERTH_TYPES, SUPPORT_CONTACT_NUMBER, TRAIN_CONFIG } from "@/lib/constants";
+import { getDuplicateAadhaarMessage, normalizeAadhaar } from "@/lib/utils";
 import { Info, FileText, X } from "lucide-react";
 import { BookingSuccess } from "./BookingSuccess";
 import { submitBooking, fetchReferenceMembers } from "@/lib/api";
@@ -43,14 +45,22 @@ const passengerSchema = z.object({
   seatPreference: z.enum(["LB", "MB", "UB", "SL", "SU", "No Preference"]),
 });
 
+const aadhaarFieldSchema = z
+  .string()
+  .refine((value) => normalizeAadhaar(value).length === 12, "Aadhaar must be 12 digits");
+
 const formSchema = z.object({
   primaryPassenger: passengerSchema.extend({
     phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
-    aadhaar: z.string().regex(/^\d{12}$/, "Aadhaar must be 12 digits"),
+    aadhaar: aadhaarFieldSchema,
     referenceMember: z.string().optional(),
   }),
   groupMembers: z
-    .array(passengerSchema)
+    .array(
+      passengerSchema.extend({
+        aadhaar: aadhaarFieldSchema,
+      }),
+    )
     .max(
       TRAIN_CONFIG.MAX_GROUP_SIZE - 1,
       `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`,
@@ -58,6 +68,26 @@ const formSchema = z.object({
   paymentMode: z.enum(["online", "manual"]),
   paymentAmount: z.coerce.number().min(1, "Amount is required"),
   paymentProof: z.any().optional(), // Payment proof for online bookings
+}).superRefine((values, ctx) => {
+  const seenAadhaars = new Set<string>();
+  const primaryAadhaar = normalizeAadhaar(values.primaryPassenger.aadhaar);
+
+  seenAadhaars.add(primaryAadhaar);
+
+  values.groupMembers.forEach((member, index) => {
+    const memberAadhaar = normalizeAadhaar(member.aadhaar);
+
+    if (seenAadhaars.has(memberAadhaar)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["groupMembers", index, "aadhaar"],
+        message: "This Aadhaar number is already used in this booking.",
+      });
+      return;
+    }
+
+    seenAadhaars.add(memberAadhaar);
+  });
 });
 
 export type BookingFormValues = z.infer<typeof formSchema>;
@@ -99,7 +129,7 @@ export function BookingForm() {
   }, [toast]);
 
   const form = useForm<BookingFormValues>({
-    resolver: zodResolver(formSchema) as any,
+    resolver: zodResolver(formSchema),
     defaultValues: {
       primaryPassenger: {
         name: "",
@@ -187,16 +217,36 @@ export function BookingForm() {
         variant: "default",
       });
       console.log("Booking response:", response);
-    } catch (error: any) {
-      console.error("Booking submission error:", error);
-
+    } catch (error: unknown) {
       let errorMessage =
         "There was an error submitting your request. Please try again.";
 
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (axios.isAxiosError(error)) {
+        if (error.response?.data && typeof error.response.data === "object") {
+          const responseData = error.response.data as { error?: string };
+          if (responseData.error) {
+            errorMessage = responseData.error;
+          }
+        }
+
+        if (!errorMessage && error.message) {
+          errorMessage = error.message;
+        }
+
+        if (error.response?.status === 409) {
+          errorMessage =
+            (error.response?.data as { error?: string } | undefined)?.error ||
+            getDuplicateAadhaarMessage(
+              normalizeAadhaar(data.primaryPassenger.aadhaar),
+            );
+        } else {
+          console.error("Booking submission error:", error);
+        }
+      } else {
+        console.error("Booking submission error:", error);
+        if (error instanceof Error && error.message) {
+          errorMessage = error.message;
+        }
       }
 
       toast({
@@ -329,7 +379,11 @@ export function BookingForm() {
                     <FormItem>
                       <FormLabel>Aadhaar Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="1234 5678 9012" {...field} />
+                        <Input
+                          placeholder="1234 5678 9012"
+                          inputMode="numeric"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -497,6 +551,23 @@ export function BookingForm() {
                     />
                     <FormField
                       control={form.control}
+                      name={`groupMembers.${index}.aadhaar`}
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2">
+                          <FormLabel className="text-xs">Aadhaar Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="1234 5678 9012"
+                              inputMode="numeric"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
                       name={`groupMembers.${index}.age`}
                       render={({ field }) => (
                         <FormItem>
@@ -575,12 +646,13 @@ export function BookingForm() {
                       name: "",
                       age: 0,
                       gender: "Male",
+                      aadhaar: "",
                       seatPreference: "No Preference",
                     });
                   } else {
                     toast({
                       title: "Group Full",
-                      description: `Available seats are less than the requested group size. Please contact our coordinator at +91 9000000000`,
+                      description: `Available seats are less than the requested group size. Please contact our coordinator at ${SUPPORT_CONTACT_NUMBER}`,
                       variant: "destructive",
                     });
                   }

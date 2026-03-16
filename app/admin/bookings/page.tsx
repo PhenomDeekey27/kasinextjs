@@ -46,12 +46,15 @@ interface Booking {
   booking_id: number;
   passenger_id: number;
   main_passenger_name: string;
+  aadhaar_number: string | null;
   group_member_names: string[];
+  group_member_aadhaar_numbers: string[];
   phone: string;
   reference_name: string | null;
   seat_numbers: number[];
   seat_assignments: Array<{
     passenger_name: string;
+    aadhaar_number: string | null;
     seat_number: number;
     berth_type: string | null;
     coach_number: string | null;
@@ -73,6 +76,7 @@ interface BookingDetail extends Booking {
   seat_assignments: Array<{
     booking_id: number;
     passenger_name: string;
+    aadhaar_number: string | null;
     seat_number: number;
     berth_type: string | null;
     coach_number: string | null;
@@ -314,7 +318,7 @@ export default function BookingsPage() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
-                  placeholder="Search by main passenger, group member, or phone..."
+                  placeholder="Search by passenger, group member, phone, or Aadhaar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -448,6 +452,7 @@ export default function BookingsPage() {
                     <TableRow>
                       <TableHead>Booking ID</TableHead>
                       <TableHead>Passenger</TableHead>
+                      <TableHead>Aadhaar</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Coordinator</TableHead>
                       <TableHead>Seats</TableHead>
@@ -470,6 +475,11 @@ export default function BookingsPage() {
                         </TableCell>
                         <TableCell className="font-medium text-slate-900">
                           <div>{booking.main_passenger_name}</div>
+                          {booking.aadhaar_number && (
+                            <p className="mt-1 font-mono text-xs text-slate-500">
+                              {booking.aadhaar_number}
+                            </p>
+                          )}
                           {booking.group_member_names.length > 0 && (
                             <p className="mt-1 text-xs text-slate-500">
                               Group: {booking.group_member_names.join(", ")}
@@ -480,6 +490,18 @@ export default function BookingsPage() {
                               +{booking.total_passengers - 1} more
                             </span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-600">
+                          <div className="space-y-1">
+                            <p className="font-mono text-sm text-slate-700">
+                              {booking.aadhaar_number || "-"}
+                            </p>
+                            {booking.group_member_aadhaar_numbers.length > 0 && (
+                              <p className="font-mono text-[11px] text-slate-500">
+                                Group: {booking.group_member_aadhaar_numbers.join(", ")}
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="font-mono text-sm text-slate-600">
                           {booking.phone}
@@ -788,6 +810,9 @@ export default function BookingsPage() {
                             Seat
                           </th>
                           <th className="text-left px-3 py-2 font-medium">
+                            Aadhaar
+                          </th>
+                          <th className="text-left px-3 py-2 font-medium">
                             Berth
                           </th>
                           <th className="text-left px-3 py-2 font-medium">
@@ -806,6 +831,9 @@ export default function BookingsPage() {
                             </td>
                             <td className="px-3 py-2 font-mono text-blue-700 font-semibold">
                               {a.seat_number}
+                            </td>
+                            <td className="px-3 py-2 font-mono text-slate-600">
+                              {a.aadhaar_number ?? "—"}
                             </td>
                             <td className="px-3 py-2 text-slate-600 capitalize">
                               {a.berth_type ?? "—"}

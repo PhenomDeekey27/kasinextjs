@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SUPPORT_CONTACT_NUMBER } from "@/lib/constants";
 
 export function Footer() {
   return (
@@ -34,6 +35,17 @@ export function Footer() {
             <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-slate-900">Admin</h3>
             <ul className="space-y-3 text-sm text-slate-500">
               <li><Link href="/admin/login" className="hover:text-blue-600 transition-colors">Login</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-slate-900">Contact</h3>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li>
+                <a href={`tel:${SUPPORT_CONTACT_NUMBER}`} className="hover:text-blue-600 transition-colors">
+                  {SUPPORT_CONTACT_NUMBER}
+                </a>
+              </li>
             </ul>
           </div>
         </div>

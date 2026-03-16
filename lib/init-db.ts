@@ -1,4 +1,5 @@
 import { queryWithClient, rawGetClient } from "./db";
+import { SUPPORT_CONTACT_NUMBER } from "./constants";
 
 const SEAT_TYPES = [
   "lower",
@@ -12,178 +13,183 @@ const SEAT_TYPES = [
 ] as const;
 
 const REFERENCE_MEMBERS = [
-  "Rajesh Kumar",
-  "Priya Sharma",
-  "Amit Patel",
-  "Neha Gupta",
-  "Rahul Singh",
-  "Anjali Verma",
-  "Vikram Rao",
-  "Deepika Nair",
-  "Arun Mishra",
-  "Divya Iyer",
-  "Sanjay Reddy",
-  "Pooja Kapoor",
-  "Arjun Menon",
-  "Radha Pillai",
-  "Nikhil Desai",
-  "Shreya Bhat",
-  "Rohan Joshi",
-  "Kavya Sinha",
-  "Ashok Verma",
-  "Meera Devi",
-  "Anand Rao",
-  "Harini Tamil",
-  "Karan Singh",
-  "Isha Sharma",
-  "Suresh Kumar",
-  "Nisha Gupta",
-  "Arpit Jain",
-  "Chithra Nambiar",
-  "Ravi Prakash",
-  "Ananya Mukherjee",
-  "Sameer Khan",
-  "Ritika Malhotra",
-  "Varun Chopra",
-  "Prerna Bhatt",
-  "Manoj Singh",
-  "Sneha Roy",
-  "Harsh Patel",
-  "Divyam Agrawal",
-  "Siddharth Verma",
-  "Sakshi Sharma",
-  "Raj Malhotra",
-  "Geetika Singh",
-  "Abhishek Nair",
-  "Aparna Mohan",
-  "Nitin Rao",
-  "Swati Jain",
-  "Tanuj Kapoor",
-  "Neelam Desai",
-  "Vipul Yadav",
-  "Pooja Singh",
-  "Manish Kumar",
-  "Anita Verma",
-  "Shravan Pillai",
-  "Leela Iyer",
-  "Akshay Reddy",
-  "Chandra Bhat",
-  "Roopa Sinha",
-  "Gautam Joshi",
-  "Harshita Tamil",
-  "Keshav Rao",
-  "Isha Nambiar",
-  "Ramesh Prakash",
-  "Anjum Khan",
-  "Siddesh Rao",
-  "Tara Sharma",
-  "Pranav Malhotra",
-  "Uma Devi",
-  "Vikas Patel",
-  "Vedavati Roy",
-  "Yash Agrawal",
-  "Yamini Singh",
-  "Shivam Kapoor",
-  "Yugandhar Verma",
-  "Zebu Iyer",
-  "Zainab Khan",
-  "Aakash Nair",
-  "Aadhya Mohan",
-  "Aatreya Yadav",
-  "Aavya Jain",
-  "Abhi Desai",
-  "Achal Pillai",
-  "Aditi Sharma",
-  "Aditya Roy",
-  "Afroz Khan",
-  "Agam Malhotra",
-  "Agni Verma",
-  "Agrawal Patel",
-  "Agrima Singh",
-  "Ahalya Reddy",
-  "Ahamiya Bhat",
-  "Ajay Sinha",
-  "Ajaya Joshi",
-  "Akanksha Tamil",
-  "Akanksha Rao",
-  "Akbar Nambiar",
-  "Akshara Prakash",
-  "Akshit Khan",
-  "Alaina Rao",
-  "Alanis Sharma",
-  "Alark Malhotra",
-  "Alarmel Devi",
-  "Alaya Patel",
-  "Albena Roy",
-  "Alden Agrawal",
-  "Alder Singh",
-  "Alec Kapoor",
-  "Alecia Verma",
-  "Aleen Iyer",
-  "Alena Mohan",
-  "Alenia Yadav",
-  "Aleris Jain",
-  "Aleron Desai",
-  "Alesa Pillai",
-  "Alesia Sharma",
-  "Aleta Row",
-  "Aletta Nair",
-  "Aleudin Khan",
-  "Alev Rao",
-  "Alexa Singh",
-  "Alexei Malhotra",
-  "Alexia Devi",
-  "Alexina Patel",
-  "Alexio Tamil",
-  "Alexios Joshi",
-  "Alexios Reddy",
-  "Alexis Bhat",
-  "Alexius Sinha",
-  "Alexya Khan",
-  "Alfian Rao",
-  "Alfira Sharma",
-  "Alfonsino Nambiar",
-  "Alfonzo Prakash",
-  "Alfreda Kapoor",
-  "Alfredo Verma",
-  "Algae Iyer",
-  "Alger Mohan",
-  "Algia Yadav",
-  "Algid Jain",
-  "Algie Desai Pillai",
-  "Algis Sharma",
-  "Algitha Roy",
-  "Algot Agrawal",
-  "Algrim Singh",
-  "Alguaine Malhotra",
-  "Alhagi Verma",
-  "Alhassan Iyer",
-  "Alhaua Mohan",
-  "Alhaw Yadav",
-  "Alheah Jain",
-  "Alheah Desai",
-  "Alheary Pillai",
-  "Alheary Sharma",
-  "Alheaty Roy",
-  "Alheda Agrawal",
-  "Alheir Singh",
-  "Alheka Malhotra",
-  "Alhela Verma",
-  "Alhele Iyer",
-  "Alhelia Mohan",
-  "Alhelie Yadav",
-  "Alhelis Jain",
-  "Alhelix Desai",
-  "Alhemira Pillai",
-  "Alhena Sharma",
-  "Alhenaj Roy",
-  "Alhenald Agrawal",
-  "Alhenari Singh",
-  "Alhenassa Malhotra",
-  "Alhenat Verma",
+  "APC sir",
+  "ANBAZHAGAN A",
+  "AMIRTHALAKSHMI",
+  "ANGAMMAL",
+  "ANJALI",
+  "ANNAMALAI",
+  "ARUL MOZHI",
+  "B SATHISH KUMAR",
+  "BALAJI K SENTHIL",
+  "BHAKYARAJ",
+  "BHASKARAN",
+  "BHUVANA",
+  "C SAKTHIVEL",
+  "CHINNA DURAI",
+  "CHITHRA SAKTHIVELAN",
+  "DHATCHINA MOORTHI",
+  "DINAKARAN",
+  "DURGA BHAGYARAJ",
+  "G VENKATESHKUMAR",
+  "G VENKATRAMAN",
+  "GANAPATHI",
+  "GANESAN SIR (HEAD)",
+  "GEETHA BALACHANDAR",
+  "GOKULAKANNAN",
+  "GOPALA KRISHNAN",
+  "GURU PRASANNA(Karthi Ane Govinth)",
+  "GURUMOORTHI SOWCARPET",
+  "HEMA",
+  "ILAIYARANI",
+  "JAWAHAR",
+  "KANNAN N",
+  "KARPAGAM",
+  "KARTHIKEYAN Sriperumbudur",
+  "KARTHIKEYAN R (Maraimalainagar)",
+  "KARTHIKEYAN perambur(Karthik JJ)",
+  "KARUNAKARAN",
+  "KASI RAJAN",
+  "KAVITHA CHAKARAVARTHY",
+  "KAVITHA S (Thiruvannamalai)",
+  "KUMARASWAMY",
+  "LAVANYA",
+  "LOHANATHAN",
+  "M PUSPARAJAN",
+  "MADESHWARI",
+  "MALAR",
+  "MALATHI",
+  "MANIMEKALAI",
+  "MATHIYALAGAN",
+  "MUTHAMIL SELVAN",
+  "MUTHUSAMY (Muthu M SAAMY)",
+  "MUTHUSAMY (Muthusamyk6679)",
+  "N THILAGAVATHY",
+  "NAGARAJ",
+  "NAGARAJU P",
+  "NIRMALA",
+  "P MOORTHY",
+  "PADMANABAN",
+  "PALANI VEL",
+  "PALANISAMY V",
+  "PARIMALA GANDHI",
+  "PARTHIBAN",
+  "PONRAJ",
+  "PRAKASAM",
+  "PRAKASAM",
+  "PRATHABAN N",
+  "PRATHAP",
+  "PRAVEEN KUMAR",
+  "RAGHU",
+  "RAJA",
+  "RAJESWARI S",
+  "RAMALAKSHMI",
+  "RAMALAKSHMI C",
+  "RAMESH",
+  "RANJITH",
+  "RAVI k",
+  "RENUGA DEVI",
+  "RUKKU Swamy Vasan",
+  "S R PALANISAMY",
+  "SAI SIVA",
+  "SANKAR B",
+  "SANKAR R",
+  "SARASWATI",
+  "SARAVANAN Neyveli",
+  "SARAVANAN D",
+  "SARAVANAN FORD",
+  "SARAVANAN P Ambattur786",
+  "SELVAKUMAR",
+  "SELVAMANI",
+  "SELVARASU",
+  "SENTHIL KUMAR",
+  "SHANMUGA VEL",
+  "SOMASUNDARAM SIR",
+  "SOORNA MOORTHY",
+  "SOWTHRI",
+  "SRI RAM MANOGAR",
+  "SRIPATHI Venkatesan",
+  "SRIRAM",
+  "SUBRAMANIAN S  LIFT",
+  "SUBRAMANIAN R",
+  "SUNDARAMOORTHY",
+  "SURESH",
+  "SUYAMBUKANI",
+  "T SIVAKUMAR",
+  "TAMIL ARASAN",
+  "TAMIL VANAN",
+  "THAMARAI",
+  "THANGARANI S",
+  "THARANI",
+  "THIYANESWARAN",
+  "THURAISAMY VETHAM VASTU",
+  "UMA RAJAVEL",
+  "UMA LAKSHANYAA",
+  "UMA SATHYA",
+  "VALLI",
+  "VASUDEV A KRISHNA",
+  "VELPAANDIYAN",
+  "VENGADESH ELANCZHIYAN",
+  "VENKATESWARA PERUMAL",
+  "VENUGOPAL",
+  "VIJAYA A",
+  "VV  SENTHIL",
+  "YUGA PRIYA",
+  "SAJANA",
+  "KARTHIKEYAN T (Musuri)",
+  "SENTHIL ARUNACHALAM",
+  "ANBARASAN",
+  "TAMILARASU",
+  "THANGARAJ",
+  "MANJULA MAM",
+  "PRABAVATHI k",
+  "KRISHNAMURTHY V",
+  "SRIDHAR V",
+  "KS RAVIKUMAR",
+  "INDRADEVI",
+  "GOWRI",
+  "RAJA D",
+  "SARAVANAN S",
+  "GUNASEKARAN KS",
+  "USHA RANI",
+  "SELVAKUMAR M",
+  "PURUSOTHAMAN S",
+  "RAMASUBBU",
+  "BALAN KR",
+  "MAHESWARI RAMACHANDRAN",
+  "KAVIN KUMAR",
+  "ARUL E",
+  "UMA RANI M",
+  "BALAJI M",
+  "VALLI K",
+  "SIVANANTHAN",
+  "BRINDHA SIVANANTHAN",
+  "SAKTHIVEL SIR",
+  "GAYATHRI NATARAJAN",
+  "RAJESWARI C",
+  "ARUL PRAKASH",
+  "PRASANNA",
+  "MUNEESWARI",
+  "R CHELLAMUTHU",
+  "S  PALANIAPPAN",
+  "DEVIKA P",
+  "M SIVA",
+  "VADIVEL",
+  "A THANGAM",
+  "MANIKANDAN G",
+  "MENAKA",
+  "RAMAMOORTHY",
+  "T PANCHAPAKESAN",
+  "SANTHIYA",
+  "SATHISH",
+  "M SENDHIL RAMANUJAR",
+  "VANITHA M",
+  "KARTHIK K",
+  "VIGNESH MURUGESAN",
 ];
 
 let initRunPromise: Promise<void> | null = null;
+const SUPPORT_CONTACT_NUMBER_SQL = SUPPORT_CONTACT_NUMBER.replace(/'/g, "''");
 
 export async function initDatabase(): Promise<void> {
   if (initRunPromise) {
@@ -237,8 +243,154 @@ export async function initDatabase(): Promise<void> {
         name TEXT,
         age INT,
         gender TEXT,
+        aadhaar_number TEXT,
         seat_preference TEXT
       )
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE group_members
+      ADD COLUMN IF NOT EXISTS aadhaar_number TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      CREATE OR REPLACE FUNCTION normalize_aadhaar_number(input_value TEXT)
+      RETURNS TEXT
+      AS $$
+        SELECT NULLIF(REGEXP_REPLACE(COALESCE(input_value, ''), '\\D', '', 'g'), '')
+      $$ LANGUAGE SQL IMMUTABLE
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      UPDATE passengers
+      SET aadhaar_number = normalize_aadhaar_number(aadhaar_number)
+      WHERE aadhaar_number IS NOT NULL
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      UPDATE group_members
+      SET aadhaar_number = normalize_aadhaar_number(aadhaar_number)
+      WHERE aadhaar_number IS NOT NULL
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      CREATE OR REPLACE FUNCTION enforce_unique_booking_aadhaar()
+      RETURNS TRIGGER
+      AS $$
+      DECLARE
+        normalized_aadhaar TEXT;
+      BEGIN
+        normalized_aadhaar := normalize_aadhaar_number(NEW.aadhaar_number);
+
+        IF normalized_aadhaar IS NULL THEN
+          NEW.aadhaar_number := NULL;
+          RETURN NEW;
+        END IF;
+
+        IF LENGTH(normalized_aadhaar) <> 12 THEN
+          RAISE EXCEPTION 'Aadhaar number must be 12 digits.';
+        END IF;
+
+        NEW.aadhaar_number := normalized_aadhaar;
+
+        IF TG_TABLE_NAME = 'passengers' THEN
+          IF EXISTS (
+            SELECT 1
+            FROM passengers p
+            WHERE p.aadhaar_number = normalized_aadhaar
+              AND p.id <> COALESCE(NEW.id, -1)
+          ) OR EXISTS (
+            SELECT 1
+            FROM group_members gm
+            WHERE gm.aadhaar_number = normalized_aadhaar
+          ) THEN
+            RAISE EXCEPTION 'A record with Aadhaar number % already exists. Duplicate registration is not allowed. For any queries contact ${SUPPORT_CONTACT_NUMBER_SQL}.', normalized_aadhaar
+              USING ERRCODE = '23505';
+          END IF;
+        ELSE
+          IF EXISTS (
+            SELECT 1
+            FROM group_members gm
+            WHERE gm.aadhaar_number = normalized_aadhaar
+              AND gm.id <> COALESCE(NEW.id, -1)
+          ) OR EXISTS (
+            SELECT 1
+            FROM passengers p
+            WHERE p.aadhaar_number = normalized_aadhaar
+          ) THEN
+            RAISE EXCEPTION 'A record with Aadhaar number % already exists. Duplicate registration is not allowed. For any queries contact ${SUPPORT_CONTACT_NUMBER_SQL}.', normalized_aadhaar
+              USING ERRCODE = '23505';
+          END IF;
+        END IF;
+
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      DROP TRIGGER IF EXISTS passengers_unique_aadhaar_trigger ON passengers
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      CREATE TRIGGER passengers_unique_aadhaar_trigger
+      BEFORE INSERT OR UPDATE OF aadhaar_number ON passengers
+      FOR EACH ROW
+      EXECUTE FUNCTION enforce_unique_booking_aadhaar()
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      DROP TRIGGER IF EXISTS group_members_unique_aadhaar_trigger ON group_members
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      CREATE TRIGGER group_members_unique_aadhaar_trigger
+      BEFORE INSERT OR UPDATE OF aadhaar_number ON group_members
+      FOR EACH ROW
+      EXECUTE FUNCTION enforce_unique_booking_aadhaar()
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      CREATE INDEX IF NOT EXISTS passengers_aadhaar_lookup_idx
+      ON passengers (aadhaar_number)
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      CREATE INDEX IF NOT EXISTS group_members_aadhaar_lookup_idx
+      ON group_members (aadhaar_number)
       `,
       );
 
@@ -398,20 +550,45 @@ export async function initDatabase(): Promise<void> {
       `,
       );
 
-      console.log("Seeding reference members...");
-      for (const memberName of REFERENCE_MEMBERS) {
-        await queryWithClient(
-          client,
-          `
-        INSERT INTO reference_members (name)
-        VALUES ($1)
-        ON CONFLICT (name) DO NOTHING
-        `,
-          [memberName],
-        );
-      }
+      console.log("Syncing reference members...");
 
-      console.log(`  ✓ Seeded ${REFERENCE_MEMBERS.length} reference members`);
+      const uniqueReferenceMembers = Array.from(
+        new Set(
+          REFERENCE_MEMBERS.map((memberName) => memberName.trim()).filter(
+            (memberName) => memberName.length > 0,
+          ),
+        ),
+      );
+
+      await queryWithClient(
+        client,
+        `
+      DELETE FROM reference_members rm
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM UNNEST($1::TEXT[]) AS seeded(name)
+        WHERE seeded.name = TRIM(rm.name)
+      )
+      `,
+        [uniqueReferenceMembers],
+      );
+
+      await queryWithClient(
+        client,
+        `
+      INSERT INTO reference_members (name)
+      SELECT seeded.name
+      FROM UNNEST($1::TEXT[]) AS seeded(name)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM reference_members rm
+        WHERE TRIM(rm.name) = seeded.name
+      )
+      `,
+        [uniqueReferenceMembers],
+      );
+
+      console.log(`  ✓ Synced ${uniqueReferenceMembers.length} reference members`);
 
       await client.query("COMMIT");
       console.log("Database initialization complete.");

@@ -22,6 +22,9 @@ export const SEAT_COLORS = {
   RESERVED: "bg-gray-400",
 };
 
+export const SUPPORT_CONTACT_NUMBER =
+  process.env.NEXT_PUBLIC_SUPPORT_CONTACT_NUMBER?.trim() || "0000000000";
+
 export const getBerthType = (seatNumber: number): BerthType => {
   const mod8 = seatNumber % 8;
   switch (mod8) {
