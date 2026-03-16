@@ -1,4 +1,31 @@
 import axios from "axios";
+import { normalizeAadhaar } from "./utils";
+
+interface BookingPrimaryPassenger {
+  name: string;
+  phone: string;
+  aadhaar: string;
+  gender: string;
+  age: number;
+  seatPreference: string;
+  referenceMember?: string;
+}
+
+interface BookingGroupMember {
+  name: string;
+  age: number;
+  gender: string;
+  aadhaar: string;
+  seatPreference: string;
+}
+
+interface SubmitBookingPayload {
+  primaryPassenger: BookingPrimaryPassenger;
+  groupMembers: BookingGroupMember[];
+  paymentMode: "online" | "manual";
+  paymentAmount: number;
+  paymentProof?: FileList;
+}
 
 const api = axios.create({
   baseURL: "/api",
@@ -8,15 +35,16 @@ const api = axios.create({
  * Transform BookingForm data to API format
  * Converts camelCase form structure to snake_case API format
  */
-function transformBookingData(bookingData: any) {
+function transformBookingData(bookingData: SubmitBookingPayload) {
   const { primaryPassenger, groupMembers, paymentMode, paymentAmount, paymentProof } = bookingData;
 
   // Transform group members to JSON string
   const transformedGroupMembers = groupMembers.length > 0 
-    ? JSON.stringify(groupMembers.map((m: any) => ({
+    ? JSON.stringify(groupMembers.map((m) => ({
         name: m.name,
         age: m.age,
         gender: m.gender,
+        aadhaar_number: normalizeAadhaar(m.aadhaar),
         seat_preference: m.seatPreference,
       })))
     : null;
@@ -25,7 +53,7 @@ function transformBookingData(bookingData: any) {
     // Primary passenger details
     name: primaryPassenger.name,
     phone: primaryPassenger.phone,
-    aadhaar_number: primaryPassenger.aadhaar,
+    aadhaar_number: normalizeAadhaar(primaryPassenger.aadhaar),
     gender: primaryPassenger.gender,
     age: primaryPassenger.age,
     seat_preference: primaryPassenger.seatPreference,
@@ -42,7 +70,7 @@ function transformBookingData(bookingData: any) {
  * POST /api/book-ticket
  * Submit booking with file uploads using FormData
  */
-export const submitBooking = async (bookingData: any) => {
+export const submitBooking = async (bookingData: SubmitBookingPayload) => {
   try {
     const transformedData = transformBookingData(bookingData);
     
@@ -86,7 +114,9 @@ export const submitBooking = async (bookingData: any) => {
     
     return response.data;
   } catch (error) {
-    console.error("Booking submission error:", error);
+    if (!axios.isAxiosError(error) || error.response?.status !== 409) {
+      console.error("Booking submission error:", error);
+    }
     throw error;
   }
 };

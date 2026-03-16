@@ -4,14 +4,77 @@ import { allocateSeats } from "@/lib/services/seatAllocator";
 import { sendCoordinatorAlert } from "@/lib/services/alertService";
 import { uploadToCloudinary } from "@/lib/services/cloudinaryStorage";
 import { parseFormData, fileToBuffer } from "@/lib/services/uploadService";
+import { getDuplicateAadhaarMessage, normalizeAadhaar } from "@/lib/utils";
 
 interface GroupMember {
   id: number;
   name: string;
   age: number;
   gender: string;
+  aadhaar_number: string;
   seat_preference: string | null;
   passenger_id: number;
+}
+
+type RequestError = Error & {
+  status?: number;
+  code?: string;
+};
+
+function createRequestError(
+  message: string,
+  status: number,
+  code?: string,
+): RequestError {
+  const error = new Error(message) as RequestError;
+  error.status = status;
+  error.code = code;
+  return error;
+}
+
+function validateAadhaar(value: string, fieldLabel: string) {
+  const normalizedValue = normalizeAadhaar(value);
+
+  if (normalizedValue.length !== 12) {
+    throw createRequestError(`${fieldLabel} Aadhaar number must be 12 digits.`, 400);
+  }
+
+  return normalizedValue;
+}
+
+async function ensureAadhaarDoesNotExist(
+  client: Awaited<ReturnType<typeof getClient>>,
+  aadhaarNumbers: string[],
+) {
+  if (aadhaarNumbers.length === 0) {
+    return;
+  }
+
+  const result = await client.query(
+    `
+    WITH requested AS (
+      SELECT UNNEST($1::TEXT[]) AS aadhaar_number
+    )
+    SELECT requested.aadhaar_number
+    FROM requested
+    WHERE EXISTS (
+      SELECT 1 FROM passengers p WHERE p.aadhaar_number = requested.aadhaar_number
+    )
+       OR EXISTS (
+      SELECT 1 FROM group_members gm WHERE gm.aadhaar_number = requested.aadhaar_number
+    )
+    LIMIT 1
+    `,
+    [aadhaarNumbers],
+  );
+
+  if (result.rows.length > 0) {
+    throw createRequestError(
+      getDuplicateAadhaarMessage(result.rows[0].aadhaar_number),
+      409,
+      "23505",
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -56,6 +119,11 @@ export async function POST(request: NextRequest) {
       groupMembersStr,
     });
 
+    const normalizedAadhaarNumber = validateAadhaar(
+      aadhaar_number,
+      "Primary passenger",
+    );
+
     // Validate age
     const parsedAge = parseInt(age);
 
@@ -64,6 +132,42 @@ export async function POST(request: NextRequest) {
     if (isNaN(parsedAge)) {
       throw new Error(`Invalid age value received: ${age}`);
     }
+
+    const parsedGroupMembers = groupMembersStr
+      ? JSON.parse(groupMembersStr)
+      : [];
+
+    if (!Array.isArray(parsedGroupMembers)) {
+      throw createRequestError("Group members payload is invalid.", 400);
+    }
+
+    const normalizedGroupMembers = parsedGroupMembers.map((member, index) => ({
+      ...member,
+      aadhaar_number: validateAadhaar(
+        member.aadhaar_number,
+        `Group member ${index + 1}`,
+      ),
+    }));
+
+    const requestAadhaarNumbers = [
+      normalizedAadhaarNumber,
+      ...normalizedGroupMembers.map((member) => member.aadhaar_number),
+    ];
+
+    const seenAadhaarNumbers = new Set<string>();
+    for (const currentAadhaarNumber of requestAadhaarNumbers) {
+      if (seenAadhaarNumbers.has(currentAadhaarNumber)) {
+        throw createRequestError(
+          getDuplicateAadhaarMessage(currentAadhaarNumber),
+          409,
+          "23505",
+        );
+      }
+
+      seenAadhaarNumbers.add(currentAadhaarNumber);
+    }
+
+    await ensureAadhaarDoesNotExist(client, requestAadhaarNumbers);
 
     // Upload payment proof to Cloudinary
     let paymentProofUrl: string | null = null;
@@ -102,7 +206,7 @@ export async function POST(request: NextRequest) {
       [
         name,
         phone,
-        aadhaar_number,
+        normalizedAadhaarNumber,
         gender,
         parsedAge,
         seat_preference,
@@ -120,18 +224,16 @@ export async function POST(request: NextRequest) {
     if (groupMembersStr) {
       console.log("Parsing group members:", groupMembersStr);
 
-      const parsedGroupMembers = JSON.parse(groupMembersStr);
+      console.log("Parsed group members:", normalizedGroupMembers);
 
-      console.log("Parsed group members:", parsedGroupMembers);
-
-      for (const member of parsedGroupMembers) {
+      for (const member of normalizedGroupMembers) {
         console.log("Inserting group member:", member);
 
         const result = await client.query(
           `
           INSERT INTO group_members
-          (passenger_id,name,age,gender,seat_preference)
-          VALUES ($1,$2,$3,$4,$5)
+          (passenger_id,name,age,gender,aadhaar_number,seat_preference)
+          VALUES ($1,$2,$3,$4,$5,$6)
           RETURNING *
           `,
           [
@@ -139,6 +241,7 @@ export async function POST(request: NextRequest) {
             member.name,
             member.age,
             member.gender,
+            member.aadhaar_number,
             member.seat_preference,
           ],
         );
@@ -284,13 +387,31 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     await client.query("ROLLBACK");
 
-    console.error("BOOKING ERROR:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "status" in error &&
+      typeof (error as RequestError).status === "number"
+        ? (error as RequestError).status!
+        : typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as RequestError).code === "23505"
+          ? 409
+          : 500;
+
+    if (status === 409) {
+      console.info("Duplicate booking blocked:", message);
+    } else {
+      console.error("BOOKING ERROR:", error);
+    }
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: message,
       },
-      { status: 500 },
+      { status },
     );
   } finally {
     client.release();

@@ -5,12 +5,15 @@ interface BookingRecord {
   booking_id: number;
   passenger_id: number;
   main_passenger_name: string;
+  aadhaar_number: string | null;
   group_member_names: string[];
+  group_member_aadhaar_numbers: string[];
   phone: string;
   reference_name: string | null;
   seat_numbers: number[];
   seat_assignments: Array<{
     passenger_name: string;
+    aadhaar_number: string | null;
     seat_number: number;
     berth_type: string | null;
     coach_number: string | null;
@@ -21,6 +24,25 @@ interface BookingRecord {
   review_reason: string | null;
   booked_at: string;
   total_passengers: number;
+}
+
+interface BookingQueryRow {
+  booking_id: number | string;
+  passenger_id: number | string;
+  main_passenger_name: string;
+  aadhaar_number: string | null;
+  group_member_names: unknown;
+  group_member_aadhaar_numbers: unknown;
+  phone: string;
+  reference_name: string | null;
+  seat_numbers: unknown;
+  seat_assignments: unknown;
+  coach_number: string | null;
+  booking_status: string | null;
+  needs_review: unknown;
+  review_reason: string | null;
+  booked_at: string;
+  total_passengers: number | string;
 }
 
 /**
@@ -60,8 +82,8 @@ export async function GET(request: NextRequest) {
     const sortOrder = (searchParams.get("sortOrder") || "DESC").toUpperCase();
 
     // Build WHERE clause
-    let whereConditions: string[] = [];
-    const params: any[] = [];
+    const whereConditions: string[] = [];
+    const params: unknown[] = [];
 
     if (search) {
       whereConditions.push(`(
@@ -82,6 +104,13 @@ export async function GET(request: NextRequest) {
           )
         )
         OR COALESCE(p.phone, '') ILIKE $${params.length + 1}
+        OR COALESCE(p.aadhaar_number, '') ILIKE $${params.length + 1}
+        OR EXISTS (
+          SELECT 1
+          FROM group_members gm_search
+          WHERE gm_search.passenger_id = p.id
+            AND COALESCE(gm_search.aadhaar_number, '') ILIKE $${params.length + 1}
+        )
       )`);
       params.push(`%${search}%`);
     }
@@ -146,10 +175,15 @@ export async function GET(request: NextRequest) {
           MIN(b.id) AS booking_id,
           p.id AS passenger_id,
           COALESCE(MAX(NULLIF(TRIM(b.passenger_name), '')), p.name) AS main_passenger_name,
+          p.aadhaar_number,
           COALESCE(
             ARRAY_REMOVE(ARRAY_AGG(DISTINCT NULLIF(TRIM(b.group_member_name), '')), NULL),
             ARRAY[]::TEXT[]
           ) AS group_member_names,
+          COALESCE(
+            ARRAY_REMOVE(ARRAY_AGG(DISTINCT gm.aadhaar_number), NULL),
+            ARRAY[]::TEXT[]
+          ) AS group_member_aadhaar_numbers,
           p.phone,
           NULLIF(TRIM(p.reference_name), '') AS reference_name,
           COALESCE(ARRAY_AGG(s.seat_number ORDER BY s.seat_number), ARRAY[]::INT[]) AS seat_numbers,
@@ -163,6 +197,7 @@ export async function GET(request: NextRequest) {
             JSON_AGG(
               JSON_BUILD_OBJECT(
                 'passenger_name', COALESCE(gm.name, p.name),
+                'aadhaar_number', COALESCE(gm.aadhaar_number, p.aadhaar_number),
                 'seat_number', s.seat_number,
                 'berth_type', s.berth_type,
                 'coach_number', c.coach_number
@@ -185,7 +220,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN seats s ON s.id = b.seat_id
         LEFT JOIN coaches c ON c.id = b.coach_id
         ${whereClause}
-        GROUP BY p.id, p.name, p.phone, p.reference_name
+        GROUP BY p.id, p.name, p.phone, p.aadhaar_number, p.reference_name
       )
       SELECT *
       FROM grouped
@@ -196,14 +231,24 @@ export async function GET(request: NextRequest) {
     params.push(limit, offset);
     const bookingsResult = await query(bookingsQuery, params);
 
-    const bookings: BookingRecord[] = bookingsResult.rows.map((row: any) => ({
+    const bookings: BookingRecord[] = bookingsResult.rows.map((rawRow) => {
+      const row = rawRow as BookingQueryRow;
+
+      return {
       booking_id: Number(row.booking_id),
       passenger_id: Number(row.passenger_id),
       main_passenger_name: row.main_passenger_name,
+      aadhaar_number: row.aadhaar_number,
       group_member_names: Array.isArray(row.group_member_names)
         ? row.group_member_names.filter(
             (name: unknown): name is string =>
               typeof name === "string" && name.trim().length > 0,
+          )
+        : [],
+      group_member_aadhaar_numbers: Array.isArray(row.group_member_aadhaar_numbers)
+        ? row.group_member_aadhaar_numbers.filter(
+            (aadhaar: unknown): aadhaar is string =>
+              typeof aadhaar === "string" && aadhaar.trim().length > 0,
           )
         : [],
       phone: row.phone,
@@ -224,7 +269,8 @@ export async function GET(request: NextRequest) {
       review_reason: row.review_reason,
       booked_at: row.booked_at,
       total_passengers: Number(row.total_passengers) || 0,
-    }));
+      };
+    });
 
     return NextResponse.json({
       bookings,
