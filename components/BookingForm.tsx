@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import axios from "axios";
@@ -32,7 +32,11 @@ import {
   CardTitle,
 } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { BERTH_TYPES, SUPPORT_CONTACT_NUMBER, TRAIN_CONFIG } from "@/lib/constants";
+import {
+  BERTH_TYPES,
+  SUPPORT_CONTACT_NUMBER,
+  TRAIN_CONFIG,
+} from "@/lib/constants";
 import { getDuplicateAadhaarMessage, normalizeAadhaar } from "@/lib/utils";
 import { Info, FileText, X } from "lucide-react";
 import { BookingSuccess } from "./BookingSuccess";
@@ -47,48 +51,53 @@ const passengerSchema = z.object({
 
 const aadhaarFieldSchema = z
   .string()
-  .refine((value) => normalizeAadhaar(value).length === 12, "Aadhaar must be 12 digits");
+  .refine(
+    (value) => normalizeAadhaar(value).length === 12,
+    "Aadhaar must be 12 digits",
+  );
 
-const formSchema = z.object({
-  primaryPassenger: passengerSchema.extend({
-    phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
-    aadhaar: aadhaarFieldSchema,
-    referenceMember: z.string().optional(),
-  }),
-  groupMembers: z
-    .array(
-      passengerSchema.extend({
-        aadhaar: aadhaarFieldSchema,
-      }),
-    )
-    .max(
-      TRAIN_CONFIG.MAX_GROUP_SIZE - 1,
-      `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`,
-    ),
-  paymentMode: z.enum(["online", "manual"]),
-  paymentAmount: z.coerce.number().min(1, "Amount is required"),
-  paymentProof: z.any().optional(), // Payment proof for online bookings
-}).superRefine((values, ctx) => {
-  const seenAadhaars = new Set<string>();
-  const primaryAadhaar = normalizeAadhaar(values.primaryPassenger.aadhaar);
+const formSchema = z
+  .object({
+    primaryPassenger: passengerSchema.extend({
+      phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
+      aadhaar: aadhaarFieldSchema,
+      referenceMember: z.string().optional(),
+    }),
+    groupMembers: z
+      .array(
+        passengerSchema.extend({
+          aadhaar: aadhaarFieldSchema,
+        }),
+      )
+      .max(
+        TRAIN_CONFIG.MAX_GROUP_SIZE - 1,
+        `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`,
+      ),
+    paymentMode: z.enum(["online", "manual"]),
+    paymentAmount: z.coerce.number().min(1, "Amount is required"),
+    paymentProof: z.any().optional(), // Payment proof for online bookings
+  })
+  .superRefine((values, ctx) => {
+    const seenAadhaars = new Set<string>();
+    const primaryAadhaar = normalizeAadhaar(values.primaryPassenger.aadhaar);
 
-  seenAadhaars.add(primaryAadhaar);
+    seenAadhaars.add(primaryAadhaar);
 
-  values.groupMembers.forEach((member, index) => {
-    const memberAadhaar = normalizeAadhaar(member.aadhaar);
+    values.groupMembers.forEach((member, index) => {
+      const memberAadhaar = normalizeAadhaar(member.aadhaar);
 
-    if (seenAadhaars.has(memberAadhaar)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["groupMembers", index, "aadhaar"],
-        message: "This Aadhaar number is already used in this booking.",
-      });
-      return;
-    }
+      if (seenAadhaars.has(memberAadhaar)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groupMembers", index, "aadhaar"],
+          message: "This Aadhaar number is already used in this booking.",
+        });
+        return;
+      }
 
-    seenAadhaars.add(memberAadhaar);
+      seenAadhaars.add(memberAadhaar);
+    });
   });
-});
 
 export type BookingFormValues = z.infer<typeof formSchema>;
 
@@ -129,7 +138,7 @@ export function BookingForm() {
   }, [toast]);
 
   const form = useForm<BookingFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<BookingFormValues>,
     defaultValues: {
       primaryPassenger: {
         name: "",
@@ -554,7 +563,9 @@ export function BookingForm() {
                       name={`groupMembers.${index}.aadhaar`}
                       render={({ field }) => (
                         <FormItem className="lg:col-span-2">
-                          <FormLabel className="text-xs">Aadhaar Number</FormLabel>
+                          <FormLabel className="text-xs">
+                            Aadhaar Number
+                          </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="1234 5678 9012"
