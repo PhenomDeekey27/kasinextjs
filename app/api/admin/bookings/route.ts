@@ -6,10 +6,16 @@ interface BookingRecord {
   passenger_id: number;
   main_passenger_name: string;
   aadhaar_number: string | null;
+  emergency_contact_number: string | null;
   group_member_names: string[];
   group_member_aadhaar_numbers: string[];
   phone: string;
   reference_name: string | null;
+  room_preference: string | null;
+  requires_accessibility_support: boolean;
+  payment_mode: string | null;
+  payment_type: string | null;
+  payment_pending_status: string | null;
   seat_numbers: number[];
   seat_assignments: Array<{
     passenger_name: string;
@@ -31,10 +37,16 @@ interface BookingQueryRow {
   passenger_id: number | string;
   main_passenger_name: string;
   aadhaar_number: string | null;
+  emergency_contact_number: string | null;
   group_member_names: unknown;
   group_member_aadhaar_numbers: unknown;
   phone: string;
   reference_name: string | null;
+  room_preference: string | null;
+  requires_accessibility_support: unknown;
+  payment_mode: string | null;
+  payment_type: string | null;
+  payment_pending_status: string | null;
   seat_numbers: unknown;
   seat_assignments: unknown;
   coach_number: string | null;
@@ -76,6 +88,15 @@ export async function GET(request: NextRequest) {
     const needsReview = searchParams.get("needsReview");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const roomPreference = searchParams.get("roomPreference");
+    const accessibilitySupport = searchParams.get("accessibilitySupport");
+    const paymentMode = searchParams.get("paymentMode");
+    const paymentType = searchParams.get("paymentType");
+    const paymentPendingStatus = searchParams.get("paymentPendingStatus");
+    const coachNumber = searchParams.get("coachNumber")?.trim();
+    const referenceName = searchParams.get("referenceName")?.trim();
+    const minPassengers = searchParams.get("minPassengers");
+    const maxPassengers = searchParams.get("maxPassengers");
 
     // Sort parameters
     const sortBy = searchParams.get("sortBy") || "booked_at";
@@ -136,6 +157,82 @@ export async function GET(request: NextRequest) {
       params.push(endDate);
     }
 
+    if (roomPreference) {
+      whereConditions.push(`LOWER(COALESCE(p.room_preference, '')) = $${params.length + 1}`);
+      params.push(roomPreference.toLowerCase());
+    }
+
+    if (accessibilitySupport === "true") {
+      whereConditions.push(`(
+        COALESCE(p.requires_accessibility_support, false) = true
+        OR EXISTS (
+          SELECT 1
+          FROM group_members gm_support
+          WHERE gm_support.passenger_id = p.id
+            AND COALESCE(gm_support.requires_accessibility_support, false) = true
+        )
+      )`);
+    } else if (accessibilitySupport === "false") {
+      whereConditions.push(`(
+        COALESCE(p.requires_accessibility_support, false) = false
+        AND NOT EXISTS (
+          SELECT 1
+          FROM group_members gm_support
+          WHERE gm_support.passenger_id = p.id
+            AND COALESCE(gm_support.requires_accessibility_support, false) = true
+        )
+      )`);
+    }
+
+    if (paymentMode) {
+      whereConditions.push(`LOWER(COALESCE(p.payment_mode, '')) = $${params.length + 1}`);
+      params.push(paymentMode.toLowerCase());
+    }
+
+    if (paymentType) {
+      whereConditions.push(`LOWER(COALESCE(p.payment_type, '')) = $${params.length + 1}`);
+      params.push(paymentType.toLowerCase());
+    }
+
+    if (paymentPendingStatus) {
+      whereConditions.push(`COALESCE(p.payment_pending_status, '') = $${params.length + 1}`);
+      params.push(paymentPendingStatus);
+    }
+
+    if (coachNumber) {
+      whereConditions.push(`COALESCE(c.coach_number, '') ILIKE $${params.length + 1}`);
+      params.push(`%${coachNumber}%`);
+    }
+
+    if (referenceName) {
+      whereConditions.push(`COALESCE(p.reference_name, '') ILIKE $${params.length + 1}`);
+      params.push(`%${referenceName}%`);
+    }
+
+    if (minPassengers && !Number.isNaN(Number(minPassengers))) {
+      whereConditions.push(`(
+        SELECT COUNT(*)
+        FROM bookings b_count
+        WHERE b_count.passenger_id = p.id
+           OR b_count.group_member_id IN (
+             SELECT gm_count.id FROM group_members gm_count WHERE gm_count.passenger_id = p.id
+           )
+      ) >= $${params.length + 1}`);
+      params.push(Number(minPassengers));
+    }
+
+    if (maxPassengers && !Number.isNaN(Number(maxPassengers))) {
+      whereConditions.push(`(
+        SELECT COUNT(*)
+        FROM bookings b_count
+        WHERE b_count.passenger_id = p.id
+           OR b_count.group_member_id IN (
+             SELECT gm_count.id FROM group_members gm_count WHERE gm_count.passenger_id = p.id
+           )
+      ) <= $${params.length + 1}`);
+      params.push(Number(maxPassengers));
+    }
+
     const whereClause =
       whereConditions.length > 0
         ? `WHERE ${whereConditions.join(" AND ")}`
@@ -147,6 +244,8 @@ export async function GET(request: NextRequest) {
       booked_at: "booked_at",
       passenger_name: "main_passenger_name",
       booking_status: "booking_status",
+      total_passengers: "total_passengers",
+      room_preference: "room_preference",
     };
     const safeSortBy = sortByMap[sortBy] || "booked_at";
 
@@ -163,6 +262,9 @@ export async function GET(request: NextRequest) {
             WHERE gm.passenger_id = p.id
           )
         )
+      LEFT JOIN group_members gm ON gm.id = b.group_member_id
+      LEFT JOIN seats s ON s.id = b.seat_id
+      LEFT JOIN coaches c ON c.id = b.coach_id
       ${whereClause}
     `;
     const countResult = await query(countQuery, params);
@@ -185,7 +287,13 @@ export async function GET(request: NextRequest) {
             ARRAY[]::TEXT[]
           ) AS group_member_aadhaar_numbers,
           p.phone,
+          p.emergency_contact_number,
           NULLIF(TRIM(p.reference_name), '') AS reference_name,
+          p.room_preference,
+          COALESCE(p.requires_accessibility_support, false) AS requires_accessibility_support,
+          p.payment_mode,
+          p.payment_type,
+          p.payment_pending_status,
           COALESCE(ARRAY_AGG(s.seat_number ORDER BY s.seat_number), ARRAY[]::INT[]) AS seat_numbers,
           COALESCE(MIN(c.coach_number), 'N/A') AS coach_number,
           (ARRAY_AGG(b.booking_status ORDER BY b.booked_at DESC))[1] AS booking_status,
@@ -220,7 +328,18 @@ export async function GET(request: NextRequest) {
         LEFT JOIN seats s ON s.id = b.seat_id
         LEFT JOIN coaches c ON c.id = b.coach_id
         ${whereClause}
-        GROUP BY p.id, p.name, p.phone, p.aadhaar_number, p.reference_name
+        GROUP BY
+          p.id,
+          p.name,
+          p.phone,
+          p.emergency_contact_number,
+          p.aadhaar_number,
+          p.reference_name,
+          p.room_preference,
+          p.requires_accessibility_support,
+          p.payment_mode,
+          p.payment_type,
+          p.payment_pending_status
       )
       SELECT *
       FROM grouped
@@ -252,7 +371,13 @@ export async function GET(request: NextRequest) {
           )
         : [],
       phone: row.phone,
+      emergency_contact_number: row.emergency_contact_number,
       reference_name: row.reference_name,
+      room_preference: row.room_preference,
+      requires_accessibility_support: Boolean(row.requires_accessibility_support),
+      payment_mode: row.payment_mode,
+      payment_type: row.payment_type,
+      payment_pending_status: row.payment_pending_status,
       seat_numbers: Array.isArray(row.seat_numbers)
         ? row.seat_numbers
             .map((seat: unknown) => Number(seat))
@@ -286,6 +411,15 @@ export async function GET(request: NextRequest) {
         needsReview,
         startDate,
         endDate,
+        roomPreference,
+        accessibilitySupport,
+        paymentMode,
+        paymentType,
+        paymentPendingStatus,
+        coachNumber,
+        referenceName,
+        minPassengers,
+        maxPassengers,
       },
     });
   } catch (error) {

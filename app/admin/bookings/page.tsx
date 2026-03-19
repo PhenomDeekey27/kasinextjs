@@ -47,10 +47,16 @@ interface Booking {
   passenger_id: number;
   main_passenger_name: string;
   aadhaar_number: string | null;
+  emergency_contact_number: string | null;
   group_member_names: string[];
   group_member_aadhaar_numbers: string[];
   phone: string;
   reference_name: string | null;
+  room_preference: string | null;
+  requires_accessibility_support: boolean;
+  payment_mode: string | null;
+  payment_type: string | null;
+  payment_pending_status: string | null;
   seat_numbers: number[];
   seat_assignments: Array<{
     passenger_name: string;
@@ -72,6 +78,10 @@ interface BookingDetail extends Booking {
   gender: string | null;
   age: number | null;
   seat_preference: string | null;
+  emergency_contact_number: string | null;
+  room_preference: string | null;
+  requires_accessibility_support: boolean;
+  accessibility_note: string | null;
   payment_proof_url: string | null;
   seat_assignments: Array<{
     booking_id: number;
@@ -125,11 +135,29 @@ export default function BookingsPage() {
     needsReview: string;
     startDate: string;
     endDate: string;
+    roomPreference: string;
+    accessibilitySupport: string;
+    paymentMode: string;
+    paymentType: string;
+    paymentPendingStatus: string;
+    coachNumber: string;
+    referenceName: string;
+    minPassengers: string;
+    maxPassengers: string;
   }>({
     status: "",
     needsReview: "",
     startDate: "",
     endDate: "",
+    roomPreference: "",
+    accessibilitySupport: "",
+    paymentMode: "",
+    paymentType: "",
+    paymentPendingStatus: "",
+    coachNumber: "",
+    referenceName: "",
+    minPassengers: "",
+    maxPassengers: "",
   });
 
   // Sort states
@@ -154,6 +182,21 @@ export default function BookingsPage() {
         params.append("needsReview", filters.needsReview);
       if (filters.startDate) params.append("startDate", filters.startDate);
       if (filters.endDate) params.append("endDate", filters.endDate);
+      if (filters.roomPreference)
+        params.append("roomPreference", filters.roomPreference);
+      if (filters.accessibilitySupport)
+        params.append("accessibilitySupport", filters.accessibilitySupport);
+      if (filters.paymentMode) params.append("paymentMode", filters.paymentMode);
+      if (filters.paymentType) params.append("paymentType", filters.paymentType);
+      if (filters.paymentPendingStatus)
+        params.append("paymentPendingStatus", filters.paymentPendingStatus);
+      if (filters.coachNumber) params.append("coachNumber", filters.coachNumber);
+      if (filters.referenceName)
+        params.append("referenceName", filters.referenceName);
+      if (filters.minPassengers)
+        params.append("minPassengers", filters.minPassengers);
+      if (filters.maxPassengers)
+        params.append("maxPassengers", filters.maxPassengers);
 
       const response = await fetch(`/api/admin/bookings?${params}`);
       if (response.ok) {
@@ -200,6 +243,15 @@ export default function BookingsPage() {
       needsReview: "",
       startDate: "",
       endDate: "",
+      roomPreference: "",
+      accessibilitySupport: "",
+      paymentMode: "",
+      paymentType: "",
+      paymentPendingStatus: "",
+      coachNumber: "",
+      referenceName: "",
+      minPassengers: "",
+      maxPassengers: "",
     });
     setSortBy("booked_at");
     setSortOrder("DESC");
@@ -336,7 +388,7 @@ export default function BookingsPage() {
 
             {/* Advanced Filters */}
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <div>
                   <label className="text-sm font-medium text-slate-700 mb-1 block">
                     Status
@@ -408,10 +460,199 @@ export default function BookingsPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Room Preference
+                  </label>
+                  <Select
+                    value={filters.roomPreference || ""}
+                    onValueChange={(value) =>
+                      handleFilterChange("roomPreference", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="single">Single</SelectItem>
+                      <SelectItem value="group">Group</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Accessibility Support
+                  </label>
+                  <Select
+                    value={filters.accessibilitySupport || ""}
+                    onValueChange={(value) =>
+                      handleFilterChange("accessibilitySupport", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="true">Yes</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Payment Mode
+                  </label>
+                  <Select
+                    value={filters.paymentMode || ""}
+                    onValueChange={(value) =>
+                      handleFilterChange("paymentMode", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="manual">Manual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Payment Type
+                  </label>
+                  <Input
+                    placeholder="e.g. UPI"
+                    value={filters.paymentType}
+                    onChange={(e) =>
+                      handleFilterChange("paymentType", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Pending Status
+                  </label>
+                  <Select
+                    value={filters.paymentPendingStatus || ""}
+                    onValueChange={(value) =>
+                      handleFilterChange("paymentPendingStatus", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="FULL_PAID">Full Paid</SelectItem>
+                      <SelectItem value="BALANCE_5000">
+                        5000 Pending
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Coach
+                  </label>
+                  <Input
+                    placeholder="e.g. A01"
+                    value={filters.coachNumber}
+                    onChange={(e) =>
+                      handleFilterChange("coachNumber", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Coordinator
+                  </label>
+                  <Input
+                    placeholder="Reference name"
+                    value={filters.referenceName}
+                    onChange={(e) =>
+                      handleFilterChange("referenceName", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Min Passengers
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={filters.minPassengers}
+                    onChange={(e) =>
+                      handleFilterChange("minPassengers", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Max Passengers
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={filters.maxPassengers}
+                    onChange={(e) =>
+                      handleFilterChange("maxPassengers", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Sort By
+                  </label>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="booked_at">Booked Date</SelectItem>
+                      <SelectItem value="passenger_name">Passenger Name</SelectItem>
+                      <SelectItem value="booking_status">Booking Status</SelectItem>
+                      <SelectItem value="total_passengers">Passenger Count</SelectItem>
+                      <SelectItem value="room_preference">Room Preference</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Sort Order
+                  </label>
+                  <Select
+                    value={sortOrder}
+                    onValueChange={(value) => setSortOrder(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DESC">Descending</SelectItem>
+                      <SelectItem value="ASC">Ascending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <Button
                   variant="outline"
                   onClick={handleClearFilters}
-                  className="md:col-span-2 lg:col-span-4"
+                  className="md:col-span-2 lg:col-span-5"
                 >
                   Clear Filters
                 </Button>
@@ -455,6 +696,8 @@ export default function BookingsPage() {
                       <TableHead>Aadhaar</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Coordinator</TableHead>
+                      <TableHead>Room</TableHead>
+                      <TableHead>Support</TableHead>
                       <TableHead>Seats</TableHead>
                       <TableHead>Coach</TableHead>
                       <TableHead>Status</TableHead>
@@ -508,6 +751,20 @@ export default function BookingsPage() {
                         </TableCell>
                         <TableCell className="text-slate-600">
                           {booking.reference_name || "-"}
+                        </TableCell>
+                        <TableCell className="text-slate-700 capitalize">
+                          {booking.room_preference || "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              booking.requires_accessibility_support
+                                ? "destructive"
+                                : "outline"
+                            }
+                          >
+                            {booking.requires_accessibility_support ? "Yes" : "No"}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
@@ -731,6 +988,17 @@ export default function BookingsPage() {
                       </p>
                     </div>
                   </div>
+                  {bookingDetail.emergency_contact_number && (
+                    <div className="flex items-start gap-2">
+                      <Phone className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-slate-500">Emergency Contact</p>
+                        <p className="font-medium text-slate-800 font-mono">
+                          {bookingDetail.emergency_contact_number}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {bookingDetail.aadhaar_number && (
                     <div className="flex items-start gap-2">
                       <CreditCard className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
@@ -778,6 +1046,29 @@ export default function BookingsPage() {
                       <p className="font-medium text-slate-800 font-mono">
                         {bookingDetail.coach_number}
                       </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-slate-500">Room Preference</p>
+                      <p className="font-medium text-slate-800 capitalize">
+                        {bookingDetail.room_preference || "-"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-slate-500">Accessibility Support</p>
+                      <p className="font-medium text-slate-800">
+                        {bookingDetail.requires_accessibility_support ? "Yes" : "No"}
+                      </p>
+                      {bookingDetail.accessibility_note && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          {bookingDetail.accessibility_note}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-start gap-2">

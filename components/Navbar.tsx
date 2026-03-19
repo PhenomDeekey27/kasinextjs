@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 
 export function Navbar() {
+  const router = useRouter();
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center mx-auto px-4 max-w-7xl">
@@ -13,9 +16,9 @@ export function Navbar() {
             <Image
               src="/logo.jpeg"
               alt="J Tourism logo"
-              width={28}
-              height={28}
-              className="h-7 w-7 rounded-sm object-cover"
+              width={44}
+              height={44}
+              className="h-11 w-11 rounded-md object-cover"
             />
             <span className="hidden font-bold sm:inline-block text-lg">
               J Tourism
@@ -29,9 +32,9 @@ export function Navbar() {
               <Image
                 src="/logo.jpeg"
                 alt="J Tourism logo"
-                width={28}
-                height={28}
-                className="h-7 w-7 rounded-sm object-cover"
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-md object-cover"
               />
               <span className="font-bold">J Tourism</span>
             </Link>
@@ -42,11 +45,15 @@ export function Navbar() {
             <Link href="/" className="text-sm font-medium transition-colors hover:text-primary px-3 py-2 hidden sm:block">
               Home
             </Link>
-            <Link href="/book-ticket">
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4">
-                Book Ticket
-              </Button>
-            </Link>
+            <Button
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4"
+              onClick={() => {
+                router.push(`/book-ticket?reset=${Date.now()}`);
+              }}
+            >
+              Book Ticket
+            </Button>
             <Link href="/admin/login" className="text-sm font-medium transition-colors hover:text-primary px-3 py-2 hidden sm:block">
               Admin
             </Link>

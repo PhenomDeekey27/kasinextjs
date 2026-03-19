@@ -223,13 +223,103 @@ export async function initDatabase(): Promise<void> {
         id SERIAL PRIMARY KEY,
         name TEXT,
         phone TEXT,
+        emergency_contact_number TEXT,
         aadhaar_number TEXT,
         gender TEXT,
+        dob TEXT,
         age INT,
         seat_preference TEXT,
+        room_preference TEXT,
+        requires_accessibility_support BOOLEAN DEFAULT FALSE,
+        accessibility_note TEXT,
         reference_name TEXT,
+        payment_mode TEXT,
+        payment_type TEXT,
+        transaction_id_utr TEXT,
+        payment_pending_status TEXT,
+        payment_amount NUMERIC(10,2),
         payment_proof_url TEXT
       )
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS dob TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS payment_mode TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS emergency_contact_number TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS room_preference TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS payment_type TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS requires_accessibility_support BOOLEAN DEFAULT FALSE
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS accessibility_note TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS transaction_id_utr TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS payment_pending_status TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS payment_amount NUMERIC(10,2)
       `,
       );
 
@@ -241,10 +331,14 @@ export async function initDatabase(): Promise<void> {
         id SERIAL PRIMARY KEY,
         passenger_id INT REFERENCES passengers(id),
         name TEXT,
+        dob TEXT,
         age INT,
         gender TEXT,
+        relationship TEXT,
         aadhaar_number TEXT,
-        seat_preference TEXT
+        seat_preference TEXT,
+        requires_accessibility_support BOOLEAN DEFAULT FALSE,
+        accessibility_note TEXT
       )
       `,
       );
@@ -253,7 +347,39 @@ export async function initDatabase(): Promise<void> {
         client,
         `
       ALTER TABLE group_members
+      ADD COLUMN IF NOT EXISTS dob TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE group_members
       ADD COLUMN IF NOT EXISTS aadhaar_number TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE group_members
+      ADD COLUMN IF NOT EXISTS relationship TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE group_members
+      ADD COLUMN IF NOT EXISTS requires_accessibility_support BOOLEAN DEFAULT FALSE
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE group_members
+      ADD COLUMN IF NOT EXISTS accessibility_note TEXT
       `,
       );
 

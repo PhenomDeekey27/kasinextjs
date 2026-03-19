@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TRAIN_CONFIG, getBerthType, SEAT_COLORS } from "@/lib/constants";
+import { TRAIN_CONFIG, getBerthType } from "@/lib/constants";
 import {
   Select,
   SelectContent,
@@ -120,7 +120,7 @@ export function SeatMap() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
         <div className="flex items-center space-x-4">
           <label className="font-semibold text-slate-700">Select Coach:</label>
@@ -175,27 +175,27 @@ export function SeatMap() {
         </div>
       )}
 
-      <div className="bg-slate-100 p-6 rounded-2xl border-4 border-slate-300 relative overflow-x-auto min-h-[400px]">
+      <div className="bg-slate-100 p-4 rounded-2xl border-2 border-slate-300 relative min-h-[360px]">
         {loading ? (
-          <div className="flex items-center justify-center h-[400px]">
+          <div className="flex items-center justify-center h-[320px]">
             <p className="text-slate-500 font-medium">
               Loading seat map for Coach {selectedCoachNumber}...
             </p>
           </div>
         ) : (
-          <div className="flex space-x-8 pb-4 min-w-max">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {compartments.map((comp, idx) => (
               <div
                 key={idx}
-                className="flex flex-col border-r-2 border-slate-300 pr-8 last:border-0 relative"
+                className="rounded-xl border border-slate-300 bg-white p-3 relative"
               >
-                <div className="text-xs font-bold text-slate-400 absolute -top-4 left-0">
+                <div className="text-[11px] font-bold text-slate-500 mb-2">
                   Comp {idx + 1}
                 </div>
 
-                <div className="flex space-x-12 mt-4">
+                <div className="flex items-start justify-between gap-4">
                   {/* Main 6 Seats (3x2) */}
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                     {comp.slice(0, 6).map((seatNum) => {
                       const status = getSeatStatus(seatNum);
                       const berth = getBerthType(seatNum);
@@ -203,11 +203,11 @@ export function SeatMap() {
                       return (
                         <div
                           key={seatNum}
-                          className={`w-12 h-16 rounded-md border-2 flex flex-col items-center justify-center transition-colors shadow-sm ${getSeatColor(status)}`}
+                          className={`w-9 h-11 rounded border flex flex-col items-center justify-center transition-colors ${getSeatColor(status)}`}
                           title={`Seat ${seatNum} - ${berth} (${status})${seatData?.passenger_name ? ` - ${seatData.passenger_name}` : ""}`}
                         >
-                          <span className="font-bold text-lg">{seatNum}</span>
-                          <span className="text-[10px] opacity-80 font-semibold">
+                          <span className="font-bold text-xs">{seatNum}</span>
+                          <span className="text-[9px] opacity-80 font-semibold leading-none">
                             {berth}
                           </span>
                         </div>
@@ -216,7 +216,7 @@ export function SeatMap() {
                   </div>
 
                   {/* Side 2 Seats (1x2) */}
-                  <div className="grid grid-cols-1 gap-y-[4rem]">
+                  <div className="grid grid-cols-1 gap-y-4">
                     {comp.slice(6, 8).map((seatNum) => {
                       const status = getSeatStatus(seatNum);
                       const berth = getBerthType(seatNum);
@@ -224,25 +224,17 @@ export function SeatMap() {
                       return (
                         <div
                           key={seatNum}
-                          className={`w-16 h-12 rounded-md border-2 flex flex-col items-center justify-center transition-colors shadow-sm ${getSeatColor(status)}`}
+                          className={`w-11 h-9 rounded border flex flex-col items-center justify-center transition-colors ${getSeatColor(status)}`}
                           title={`Seat ${seatNum} - ${berth} (${status})${seatData?.passenger_name ? ` - ${seatData.passenger_name}` : ""}`}
                         >
-                          <span className="font-bold text-lg">{seatNum}</span>
-                          <span className="text-[10px] opacity-80 font-semibold">
+                          <span className="font-bold text-xs">{seatNum}</span>
+                          <span className="text-[9px] opacity-80 font-semibold leading-none">
                             {berth}
                           </span>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-
-                {/* Aisle Text */}
-                <div
-                  className="absolute inset-y-0 right-[2.25rem] w-8 flex items-center justify-center text-slate-300 tracking-[0.3em] font-bold text-xs"
-                  style={{ writingMode: "vertical-rl" }}
-                >
-                  AISLE
                 </div>
               </div>
             ))}

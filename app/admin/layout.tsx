@@ -96,14 +96,14 @@ export default function AdminLayout({
       {/* Mobile Menu Toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden absolute top-4 left-4 p-2 rounded-lg bg-slate-900 text-white z-50"
+        className="md:hidden fixed top-3 left-3 p-2 rounded-lg bg-slate-900 text-white z-[60] shadow-lg"
       >
         {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
       {/* Sidebar Navigation */}
       <aside
-        className={`fixed md:relative w-64 bg-slate-900 text-slate-300 md:min-h-screen flex-shrink-0 transition-transform duration-300 z-40 ${
+        className={`fixed md:relative w-64 h-screen bg-slate-900 text-slate-300 md:min-h-screen flex flex-col flex-shrink-0 transition-transform duration-300 z-50 overflow-y-auto ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -111,9 +111,9 @@ export default function AdminLayout({
           <Image
             src="/logo.jpeg"
             alt="J Tourism logo"
-            width={32}
-            height={32}
-            className="w-8 h-8 rounded-md object-cover bg-white"
+            width={44}
+            height={44}
+            className="w-11 h-11 rounded-md object-cover bg-white"
           />
           <span className="text-xl font-bold tracking-tight">Admin OS</span>
         </div>
@@ -133,7 +133,7 @@ export default function AdminLayout({
           </div>
         </div>
 
-        <nav className="px-4 py-4 space-y-1">
+        <nav className="px-4 py-4 space-y-1 flex-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -155,7 +155,7 @@ export default function AdminLayout({
         </nav>
 
         {/* Logout Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700 bg-slate-800">
+        <div className="mt-auto p-4 border-t border-slate-700 bg-slate-800 sticky bottom-0">
           <Button
             onClick={handleLogout}
             variant="destructive"

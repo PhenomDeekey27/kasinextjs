@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,13 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -42,11 +40,105 @@ import { Info, FileText, X } from "lucide-react";
 import { BookingSuccess } from "./BookingSuccess";
 import { submitBooking, fetchReferenceMembers } from "@/lib/api";
 
+const PAYMENT_TYPE_OPTIONS = [
+  "UPI",
+  "Net Banking",
+  "IMPS",
+  "NEFT",
+  "RTGS",
+  "Debit Card",
+  "Credit Card",
+  "Wallet",
+  "Other",
+] as const;
+
+const PENDING_PAYMENT_OPTIONS = ["FULL_PAID", "BALANCE_5000"] as const;
+
+const RELATIONSHIP_OPTIONS_BY_GENDER: Record<string, string[]> = {
+  Male: ["Brother", "Son", "Father", "Husband", "Cousin Brother", "Friend"],
+  Female: ["Sister", "Daughter", "Mother", "Wife", "Cousin Sister", "Friend"],
+  Other: ["Sibling", "Child", "Parent", "Spouse", "Cousin", "Friend"],
+};
+
+function toDdMmYyyy(isoDate: string): string {
+  if (!isoDate) {
+    return "";
+  }
+
+  const [year, month, day] = isoDate.split("-");
+  if (!year || !month || !day) {
+    return "";
+  }
+
+  return `${day}/${month}/${year}`;
+}
+
+function toIsoDate(displayDate: string): string {
+  if (!displayDate) {
+    return "";
+  }
+
+  const [day, month, year] = displayDate.split("/");
+  if (!day || !month || !year) {
+    return "";
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+function calculateAgeFromDob(dob: string): number {
+  if (!dob) {
+    return 0;
+  }
+
+  const [dayString, monthString, yearString] = dob.split("/");
+  const day = Number(dayString);
+  const month = Number(monthString);
+  const year = Number(yearString);
+
+  if (
+    !Number.isInteger(day) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(year)
+  ) {
+    return 0;
+  }
+
+  const birthDate = new Date(year, month - 1, day);
+  if (
+    birthDate.getFullYear() !== year ||
+    birthDate.getMonth() !== month - 1 ||
+    birthDate.getDate() !== day
+  ) {
+    return 0;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasBirthdayOccurred =
+    today.getMonth() > month - 1 ||
+    (today.getMonth() === month - 1 && today.getDate() >= day);
+
+  if (!hasBirthdayOccurred) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : 0;
+}
+
 const passengerSchema = z.object({
   name: z.string().min(2, "Name is too short").max(50),
+  dob: z
+    .string()
+    .regex(
+      /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/,
+      "Date of Birth must be in DD/MM/YYYY format",
+    ),
   age: z.coerce.number().min(1, "Invalid age").max(120),
   gender: z.enum(["Male", "Female", "Other"]),
   seatPreference: z.enum(["LB", "MB", "UB", "SL", "SU", "No Preference"]),
+  requiresAccessibilitySupport: z.enum(["no", "yes"]),
+  accessibilityNote: z.string().optional(),
 });
 
 const aadhaarFieldSchema = z
@@ -60,13 +152,22 @@ const formSchema = z
   .object({
     primaryPassenger: passengerSchema.extend({
       phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
+      emergencyContactNumber: z
+        .string()
+        .regex(/^\d{10}$/, "Emergency contact must be 10 digits"),
       aadhaar: aadhaarFieldSchema,
+      roomPreference: z
+        .string()
+        .refine((value) => ["single", "group"].includes(value), {
+          message: "Please select room preference.",
+        }),
       referenceMember: z.string().optional(),
     }),
     groupMembers: z
       .array(
         passengerSchema.extend({
           aadhaar: aadhaarFieldSchema,
+          relationship: z.string().min(1, "Please select relationship"),
         }),
       )
       .max(
@@ -74,7 +175,9 @@ const formSchema = z
         `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`,
       ),
     paymentMode: z.enum(["online", "manual"]),
-    paymentAmount: z.coerce.number().min(1, "Amount is required"),
+    paymentType: z.string().optional(),
+    transactionIdUtr: z.string().optional(),
+    paymentPendingStatus: z.enum(PENDING_PAYMENT_OPTIONS).optional(),
     paymentProof: z.any().optional(), // Payment proof for online bookings
   })
   .superRefine((values, ctx) => {
@@ -96,12 +199,67 @@ const formSchema = z
       }
 
       seenAadhaars.add(memberAadhaar);
+
+      if (
+        member.requiresAccessibilitySupport === "yes" &&
+        (!member.accessibilityNote || member.accessibilityNote.trim().length < 4)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groupMembers", index, "accessibilityNote"],
+          message:
+            "Please add a medical/accessibility support note for this passenger.",
+        });
+      }
     });
+
+    if (
+      values.primaryPassenger.requiresAccessibilitySupport === "yes" &&
+      (!values.primaryPassenger.accessibilityNote ||
+        values.primaryPassenger.accessibilityNote.trim().length < 4)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["primaryPassenger", "accessibilityNote"],
+        message:
+          "Please add a medical/accessibility support note for this passenger.",
+      });
+    }
+
+    if (values.paymentMode === "online") {
+      if (!values.paymentType || values.paymentType.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentType"],
+          message: "Please select a payment type.",
+        });
+      }
+
+      if (
+        !values.transactionIdUtr ||
+        values.transactionIdUtr.trim().length < 6
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["transactionIdUtr"],
+          message: "Please enter a valid Transaction ID / UTR.",
+        });
+      }
+
+      if (!values.paymentPendingStatus) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentPendingStatus"],
+          message: "Please choose pending amount status.",
+        });
+      }
+    }
   });
 
 export type BookingFormValues = z.infer<typeof formSchema>;
 
 export function BookingForm() {
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [referenceMembers, setReferenceMembers] = useState<
@@ -142,16 +300,23 @@ export function BookingForm() {
     defaultValues: {
       primaryPassenger: {
         name: "",
+        dob: "",
         age: 0,
         gender: "Male",
         seatPreference: "No Preference",
+        requiresAccessibilitySupport: "no",
+        accessibilityNote: "",
         phone: "",
+        emergencyContactNumber: "",
         aadhaar: "",
+        roomPreference: "",
         referenceMember: "", // default
       },
       groupMembers: [],
       paymentMode: "online",
-      paymentAmount: 0,
+      paymentType: "",
+      transactionIdUtr: "",
+      paymentPendingStatus: undefined,
     },
   });
 
@@ -179,26 +344,41 @@ export function BookingForm() {
     )
     .slice(0, 12);
 
-  const resetBookingForm = () => {
+  const resetBookingForm = useCallback(() => {
     form.reset({
       primaryPassenger: {
         name: "",
+        dob: "",
         age: 0,
         gender: "Male",
         seatPreference: "No Preference",
+        requiresAccessibilitySupport: "no",
+        accessibilityNote: "",
         phone: "",
+        emergencyContactNumber: "",
         aadhaar: "",
+        roomPreference: "",
         referenceMember: "",
       },
       groupMembers: [],
       paymentMode: "online",
-      paymentAmount: 0,
+      paymentType: "",
+      transactionIdUtr: "",
+      paymentPendingStatus: undefined,
       paymentProof: undefined,
     });
     setPaymentProofPreview(null);
     setPaymentUploadKey((prev) => prev + 1);
     setIsReferenceLocked(false);
-  };
+  }, [form]);
+
+  useEffect(() => {
+    const shouldReset = searchParams.get("reset");
+    if (shouldReset) {
+      resetBookingForm();
+      setIsSuccess(false);
+    }
+  }, [searchParams, resetBookingForm]);
 
   const onSubmit = async (data: BookingFormValues) => {
     // Validation: Payment proof required for online payments
@@ -317,9 +497,12 @@ export function BookingForm() {
                   name="primaryPassenger.name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Name</FormLabel>
+                      <FormLabel>Full name (as per Aadhaar)</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input
+                          placeholder="Enter full name as per Aadhaar"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -329,12 +512,43 @@ export function BookingForm() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
+                    name="primaryPassenger.dob"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth (DD/MM/YYYY)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            max={new Date().toISOString().split("T")[0]}
+                            value={toIsoDate(field.value)}
+                            onChange={(e) => {
+                              const nextDob = toDdMmYyyy(e.target.value);
+                              field.onChange(nextDob);
+                              form.setValue(
+                                "primaryPassenger.age",
+                                calculateAgeFromDob(nextDob),
+                                { shouldValidate: true },
+                              );
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="primaryPassenger.age"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Age</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="30" {...field} />
+                          <Input
+                            type="number"
+                            placeholder="Auto-calculated from DOB"
+                            readOnly
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -374,7 +588,25 @@ export function BookingForm() {
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="9876543210" {...field} />
+                        <Input placeholder="Enter 10-digit mobile number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="primaryPassenger.emergencyContactNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Emergency Contact Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter emergency 10-digit contact number"
+                          inputMode="numeric"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -389,7 +621,7 @@ export function BookingForm() {
                       <FormLabel>Aadhaar Number</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="1234 5678 9012"
+                          placeholder="Enter 12-digit Aadhaar number"
                           inputMode="numeric"
                           {...field}
                         />
@@ -429,6 +661,76 @@ export function BookingForm() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="primaryPassenger.roomPreference"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Room Preference</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select room preference" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="single">Single</SelectItem>
+                          <SelectItem value="group">Group</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="primaryPassenger.requiresAccessibilitySupport"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Requires accessibility support?</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select option" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="no">No</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("primaryPassenger.requiresAccessibilitySupport") ===
+                  "yes" && (
+                  <FormField
+                    control={form.control}
+                    name="primaryPassenger.accessibilityNote"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Medical / Accessibility Support Note</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter assistance details (optional equipment, mobility support, etc.)"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
@@ -550,9 +852,14 @@ export function BookingForm() {
                       name={`groupMembers.${index}.name`}
                       render={({ field }) => (
                         <FormItem className="lg:col-span-2">
-                          <FormLabel className="text-xs">Name</FormLabel>
+                          <FormLabel className="text-xs">
+                            Full name (as per Aadhaar)
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder="Name" {...field} />
+                            <Input
+                              placeholder="Enter member full name"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -568,9 +875,37 @@ export function BookingForm() {
                           </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="1234 5678 9012"
+                              placeholder="Enter 12-digit Aadhaar number"
                               inputMode="numeric"
                               {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`groupMembers.${index}.dob`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            Date of Birth (DD/MM/YYYY)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="date"
+                              max={new Date().toISOString().split("T")[0]}
+                              value={toIsoDate(field.value)}
+                              onChange={(e) => {
+                                const nextDob = toDdMmYyyy(e.target.value);
+                                field.onChange(nextDob);
+                                form.setValue(
+                                  `groupMembers.${index}.age`,
+                                  calculateAgeFromDob(nextDob),
+                                  { shouldValidate: true },
+                                );
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -584,7 +919,12 @@ export function BookingForm() {
                         <FormItem>
                           <FormLabel className="text-xs">Age</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="Age" {...field} />
+                            <Input
+                              type="number"
+                              placeholder="Auto-calculated"
+                              readOnly
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -597,7 +937,10 @@ export function BookingForm() {
                         <FormItem>
                           <FormLabel className="text-xs">Gender</FormLabel>
                           <Select
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              form.clearErrors(`groupMembers.${index}.relationship`);
+                            }}
                             value={field.value}
                           >
                             <FormControl>
@@ -643,6 +986,92 @@ export function BookingForm() {
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name={`groupMembers.${index}.relationship`}
+                      render={({ field }) => {
+                        const selectedGender =
+                          form.watch(`groupMembers.${index}.gender`) || "Other";
+                        const relationshipOptions =
+                          RELATIONSHIP_OPTIONS_BY_GENDER[selectedGender] ||
+                          RELATIONSHIP_OPTIONS_BY_GENDER.Other;
+
+                        return (
+                          <FormItem>
+                            <FormLabel className="text-xs">Relationship</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select relationship" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {relationshipOptions.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`groupMembers.${index}.requiresAccessibilitySupport`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">
+                            Requires accessibility support?
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select option" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="no">No</SelectItem>
+                              <SelectItem value="yes">Yes</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {form.watch(
+                      `groupMembers.${index}.requiresAccessibilitySupport`,
+                    ) === "yes" && (
+                      <FormField
+                        control={form.control}
+                        name={`groupMembers.${index}.accessibilityNote`}
+                        render={({ field }) => (
+                          <FormItem className="lg:col-span-2">
+                            <FormLabel className="text-xs">
+                              Medical / Accessibility Support Note
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter assistance details for this member"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
                 </div>
               ))}
@@ -655,10 +1084,14 @@ export function BookingForm() {
                   if (totalPassengers < TRAIN_CONFIG.MAX_GROUP_SIZE) {
                     appendMember({
                       name: "",
+                      dob: "",
                       age: 0,
                       gender: "Male",
+                      relationship: "",
                       aadhaar: "",
                       seatPreference: "No Preference",
+                      requiresAccessibilitySupport: "no",
+                      accessibilityNote: "",
                     });
                   } else {
                     toast({
@@ -716,101 +1149,160 @@ export function BookingForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
-                    name="paymentAmount"
+                    name="paymentPendingStatus"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amount Paying Today (₹)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="e.g. 5000"
-                            {...field}
-                          />
-                        </FormControl>
+                        <FormLabel>Amount Pending Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select pending status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="FULL_PAID">
+                              Full Amount Paid
+                            </SelectItem>
+                            <SelectItem value="BALANCE_5000">
+                              5000 Balance Pending
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
                   {paymentMode === "online" && (
-                    <FormField
-                      control={form.control}
-                      name="paymentProof"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Payment Screenshot Proof</FormLabel>
-                          <FormControl>
-                            <div className="space-y-3">
-                              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
-                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                  <FileText className="w-8 h-8 mb-3 text-slate-400" />
-                                  <p className="mb-2 text-sm text-slate-500">
-                                    <span className="font-semibold">
-                                      Click to upload
-                                    </span>{" "}
-                                    or drag and drop
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    PNG, JPG up to 5MB
-                                  </p>
-                                </div>
-                                <Input
-                                  key={paymentUploadKey}
-                                  type="file"
-                                  className="hidden"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    field.onChange(e.target.files);
-                                    if (e.target.files && e.target.files[0]) {
-                                      const reader = new FileReader();
-                                      reader.onloadend = () => {
-                                        setPaymentProofPreview(
-                                          reader.result as string,
-                                        );
-                                      };
-                                      reader.readAsDataURL(e.target.files[0]);
-                                    }
-                                  }}
-                                />
-                              </label>
+                    <>
 
-                              {paymentProofPreview && (
-                                <div className="flex items-start gap-3 rounded-lg border bg-white p-3">
-                                  <img
-                                    src={paymentProofPreview}
-                                    alt="Payment proof preview"
-                                    className="h-20 w-20 rounded-md border object-cover"
-                                  />
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium text-slate-700">
-                                      Uploaded image preview
+                      <FormField
+                        control={form.control}
+                        name="paymentType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Payment Type</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select payment type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {PAYMENT_TYPE_OPTIONS.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="transactionIdUtr"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Transaction ID / UTR</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter transaction reference number"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="paymentProof"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Payment Screenshot Proof</FormLabel>
+                            <FormControl>
+                              <div className="space-y-3">
+                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <FileText className="w-8 h-8 mb-3 text-slate-400" />
+                                    <p className="mb-2 text-sm text-slate-500">
+                                      <span className="font-semibold">
+                                        Click to upload
+                                      </span>{" "}
+                                      or drag and drop
                                     </p>
                                     <p className="text-xs text-slate-500">
-                                      If this is wrong, remove it and upload
-                                      again.
+                                      PNG, JPG up to 5MB
                                     </p>
                                   </div>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                      setPaymentProofPreview(null);
-                                      form.setValue("paymentProof", undefined);
-                                      setPaymentUploadKey((prev) => prev + 1);
+                                  <Input
+                                    key={paymentUploadKey}
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      field.onChange(e.target.files);
+                                      if (e.target.files && e.target.files[0]) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                          setPaymentProofPreview(
+                                            reader.result as string,
+                                          );
+                                        };
+                                        reader.readAsDataURL(e.target.files[0]);
+                                      }
                                     }}
-                                    aria-label="Remove uploaded payment screenshot"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                                  />
+                                </label>
+
+                                {paymentProofPreview && (
+                                  <div className="flex items-start gap-3 rounded-lg border bg-white p-3">
+                                    <img
+                                      src={paymentProofPreview}
+                                      alt="Payment proof preview"
+                                      className="h-20 w-20 rounded-md border object-cover"
+                                    />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-slate-700">
+                                        Uploaded image preview
+                                      </p>
+                                      <p className="text-xs text-slate-500">
+                                        If this is wrong, remove it and upload
+                                        again.
+                                      </p>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        setPaymentProofPreview(null);
+                                        form.setValue("paymentProof", undefined);
+                                        setPaymentUploadKey((prev) => prev + 1);
+                                      }}
+                                      aria-label="Remove uploaded payment screenshot"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
                   )}
                 </div>
 
