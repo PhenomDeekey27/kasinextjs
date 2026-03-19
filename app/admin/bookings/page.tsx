@@ -617,7 +617,10 @@ export default function BookingsPage() {
                   <label className="text-sm font-medium text-slate-700 mb-1 block">
                     Sort By
                   </label>
-                  <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
+                  <Select
+                    value={sortBy}
+                    onValueChange={(value) => setSortBy(value ?? "booked_at")}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -637,7 +640,7 @@ export default function BookingsPage() {
                   </label>
                   <Select
                     value={sortOrder}
-                    onValueChange={(value) => setSortOrder(value)}
+                    onValueChange={(value) => setSortOrder(value ?? "DESC")}
                   >
                     <SelectTrigger>
                       <SelectValue />

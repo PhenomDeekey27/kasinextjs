@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { BookingForm } from "@/components/BookingForm";
 
 export default function BookTicketPage() {
@@ -11,7 +12,9 @@ export default function BookTicketPage() {
           Group together and pay easily. Fast seat allocation.
         </p>
       </div>
-      <BookingForm />
+      <Suspense fallback={<div className="text-center text-slate-500">Loading booking form...</div>}>
+        <BookingForm />
+      </Suspense>
     </div>
   );
 }
