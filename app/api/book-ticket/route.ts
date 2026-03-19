@@ -9,10 +9,14 @@ import { getDuplicateAadhaarMessage, normalizeAadhaar } from "@/lib/utils";
 interface GroupMember {
   id: number;
   name: string;
+  dob: string;
   age: number;
   gender: string;
+  relationship: string;
   aadhaar_number: string;
   seat_preference: string | null;
+  requires_accessibility_support: boolean;
+  accessibility_note: string | null;
   passenger_id: number;
 }
 
@@ -40,6 +44,72 @@ function validateAadhaar(value: string, fieldLabel: string) {
   }
 
   return normalizedValue;
+}
+
+function parseDobString(value: string, fieldLabel: string): Date {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) {
+    throw createRequestError(`${fieldLabel} Date of Birth is required.`, 400);
+  }
+
+  const match = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(\d{4})$/.exec(
+    trimmedValue,
+  );
+
+  if (!match) {
+    throw createRequestError(
+      `${fieldLabel} Date of Birth must be in DD/MM/YYYY format.`,
+      400,
+    );
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const parsedDate = new Date(year, month - 1, day);
+
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() !== month - 1 ||
+    parsedDate.getDate() !== day
+  ) {
+    throw createRequestError(`${fieldLabel} Date of Birth is invalid.`, 400);
+  }
+
+  return parsedDate;
+}
+
+function calculateAgeFromDob(dobDate: Date): number {
+  const today = new Date();
+  let age = today.getFullYear() - dobDate.getFullYear();
+  const hasBirthdayOccurred =
+    today.getMonth() > dobDate.getMonth() ||
+    (today.getMonth() === dobDate.getMonth() &&
+      today.getDate() >= dobDate.getDate());
+
+  if (!hasBirthdayOccurred) {
+    age -= 1;
+  }
+
+  return age;
+}
+
+function parseBooleanField(value: string | boolean, fieldLabel: string): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  const normalized = (value || "").trim().toLowerCase();
+  if (["true", "yes", "1"].includes(normalized)) {
+    return true;
+  }
+
+  if (["false", "no", "0", ""].includes(normalized)) {
+    return false;
+  }
+
+  throw createRequestError(`${fieldLabel} must be yes or no.`, 400);
 }
 
 async function ensureAadhaarDoesNotExist(
@@ -96,11 +166,21 @@ export async function POST(request: NextRequest) {
     const {
       name,
       phone,
+      emergency_contact_number,
       aadhaar_number,
       gender,
+      dob,
       age,
       seat_preference,
+      room_preference,
       reference_name,
+      payment_mode,
+      payment_type,
+      transaction_id_utr,
+      payment_pending_status,
+      payment_amount,
+      requires_accessibility_support,
+      accessibility_note,
       group_members: groupMembersStr,
     } = fields as Record<string, string>;
 
@@ -111,11 +191,21 @@ export async function POST(request: NextRequest) {
     console.log("Parsed passenger fields:", {
       name,
       phone,
+      emergency_contact_number,
       aadhaar_number,
       gender,
+      dob,
       age,
       seat_preference,
+      room_preference,
       reference_name: normalizedReferenceName,
+      payment_mode,
+      payment_type,
+      transaction_id_utr,
+      payment_pending_status,
+      payment_amount,
+      requires_accessibility_support,
+      accessibility_note,
       groupMembersStr,
     });
 
@@ -124,13 +214,81 @@ export async function POST(request: NextRequest) {
       "Primary passenger",
     );
 
-    // Validate age
-    const parsedAge = parseInt(age);
+    const normalizedEmergencyContactNumber = (
+      emergency_contact_number || ""
+    ).trim();
+    if (!/^\d{10}$/.test(normalizedEmergencyContactNumber)) {
+      throw createRequestError(
+        "Emergency contact number must be 10 digits.",
+        400,
+      );
+    }
 
-    console.log("Parsed age:", parsedAge);
+    const primaryDobDate = parseDobString(dob, "Primary passenger");
+    const parsedPrimaryAge = calculateAgeFromDob(primaryDobDate);
 
-    if (isNaN(parsedAge)) {
-      throw new Error(`Invalid age value received: ${age}`);
+    if (parsedPrimaryAge < 0 || parsedPrimaryAge > 120) {
+      throw createRequestError("Primary passenger age must be between 0 and 120.", 400);
+    }
+
+    const normalizedPaymentMode = (payment_mode || "").trim().toLowerCase();
+    const normalizedRoomPreference = (room_preference || "").trim().toLowerCase();
+    const normalizedPaymentType = (payment_type || "").trim();
+    const normalizedTransactionIdUtr = (transaction_id_utr || "").trim();
+    const normalizedPaymentPendingStatus = (payment_pending_status || "")
+      .trim()
+      .toUpperCase();
+    const parsedPaymentAmount = Number(payment_amount);
+    const requiresAccessibilitySupport = parseBooleanField(
+      requires_accessibility_support || "false",
+      "Primary passenger accessibility support",
+    );
+    const normalizedAccessibilityNote = (accessibility_note || "").trim();
+
+    if (!["online", "manual"].includes(normalizedPaymentMode)) {
+      throw createRequestError("Invalid payment mode.", 400);
+    }
+
+    if (!Number.isFinite(parsedPaymentAmount) || parsedPaymentAmount < 0) {
+      throw createRequestError("Payment amount cannot be negative.", 400);
+    }
+
+    if (!["single", "group"].includes(normalizedRoomPreference)) {
+      throw createRequestError("Room preference must be Single or Group.", 400);
+    }
+
+    if (normalizedPaymentMode === "online") {
+      if (!normalizedPaymentType) {
+        throw createRequestError("Payment type is required for online booking.", 400);
+      }
+
+      if (normalizedTransactionIdUtr.length < 6) {
+        throw createRequestError(
+          "Transaction ID / UTR is required for online booking.",
+          400,
+        );
+      }
+
+      if (
+        !["FULL_PAID", "BALANCE_5000"].includes(
+          normalizedPaymentPendingStatus,
+        )
+      ) {
+        throw createRequestError(
+          "Payment pending status must be Full Amount Paid or 5000 Balance Pending.",
+          400,
+        );
+      }
+    }
+
+    if (
+      requiresAccessibilitySupport &&
+      normalizedAccessibilityNote.length < 4
+    ) {
+      throw createRequestError(
+        "Primary passenger medical/accessibility support note is required.",
+        400,
+      );
     }
 
     const parsedGroupMembers = groupMembersStr
@@ -143,11 +301,40 @@ export async function POST(request: NextRequest) {
 
     const normalizedGroupMembers = parsedGroupMembers.map((member, index) => ({
       ...member,
+      dob: (member.dob || "").trim(),
+      age: calculateAgeFromDob(
+        parseDobString((member.dob || "").trim(), `Group member ${index + 1}`),
+      ),
       aadhaar_number: validateAadhaar(
         member.aadhaar_number,
         `Group member ${index + 1}`,
       ),
+      requires_accessibility_support: parseBooleanField(
+        member.requires_accessibility_support,
+        `Group member ${index + 1} accessibility support`,
+      ),
+      relationship: (member.relationship || "").trim(),
+      accessibility_note: (member.accessibility_note || "").trim() || null,
     }));
+
+    normalizedGroupMembers.forEach((member, index) => {
+      if (!member.relationship) {
+        throw createRequestError(
+          `Group member ${index + 1} relationship is required.`,
+          400,
+        );
+      }
+
+      if (
+        member.requires_accessibility_support &&
+        (!member.accessibility_note || member.accessibility_note.length < 4)
+      ) {
+        throw createRequestError(
+          `Group member ${index + 1} medical/accessibility support note is required.`,
+          400,
+        );
+      }
+    });
 
     const requestAadhaarNumbers = [
       normalizedAadhaarNumber,
@@ -199,18 +386,28 @@ export async function POST(request: NextRequest) {
     const passengerResult = await client.query(
       `
       INSERT INTO passengers
-      (name, phone, aadhaar_number, gender, age, seat_preference, reference_name, payment_proof_url)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      (name, phone, emergency_contact_number, aadhaar_number, gender, dob, age, seat_preference, room_preference, requires_accessibility_support, accessibility_note, reference_name, payment_mode, payment_type, transaction_id_utr, payment_pending_status, payment_amount, payment_proof_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       RETURNING *
       `,
       [
         name,
         phone,
+        normalizedEmergencyContactNumber,
         normalizedAadhaarNumber,
         gender,
-        parsedAge,
+        dob,
+        parsedPrimaryAge,
         seat_preference,
+        normalizedRoomPreference,
+        requiresAccessibilitySupport,
+        normalizedAccessibilityNote || null,
         normalizedReferenceName,
+        normalizedPaymentMode,
+        normalizedPaymentType || null,
+        normalizedTransactionIdUtr || null,
+        normalizedPaymentPendingStatus || null,
+        parsedPaymentAmount,
         paymentProofUrl,
       ],
     );
@@ -232,17 +429,21 @@ export async function POST(request: NextRequest) {
         const result = await client.query(
           `
           INSERT INTO group_members
-          (passenger_id,name,age,gender,aadhaar_number,seat_preference)
-          VALUES ($1,$2,$3,$4,$5,$6)
+          (passenger_id,name,dob,age,gender,relationship,aadhaar_number,seat_preference,requires_accessibility_support,accessibility_note)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
           RETURNING *
           `,
           [
             passenger.id,
             member.name,
+            member.dob,
             member.age,
             member.gender,
+            member.relationship,
             member.aadhaar_number,
             member.seat_preference,
+            member.requires_accessibility_support,
+            member.accessibility_note,
           ],
         );
 

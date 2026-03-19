@@ -4,26 +4,37 @@ import { normalizeAadhaar } from "./utils";
 interface BookingPrimaryPassenger {
   name: string;
   phone: string;
+  emergencyContactNumber: string;
   aadhaar: string;
   gender: string;
+  dob: string;
   age: number;
   seatPreference: string;
+  roomPreference: string;
+  requiresAccessibilitySupport: "no" | "yes";
+  accessibilityNote?: string;
   referenceMember?: string;
 }
 
 interface BookingGroupMember {
   name: string;
+  dob: string;
   age: number;
   gender: string;
+  relationship: string;
   aadhaar: string;
   seatPreference: string;
+  requiresAccessibilitySupport: "no" | "yes";
+  accessibilityNote?: string;
 }
 
 interface SubmitBookingPayload {
   primaryPassenger: BookingPrimaryPassenger;
   groupMembers: BookingGroupMember[];
   paymentMode: "online" | "manual";
-  paymentAmount: number;
+  paymentType?: string;
+  transactionIdUtr?: string;
+  paymentPendingStatus?: "FULL_PAID" | "BALANCE_5000";
   paymentProof?: FileList;
 }
 
@@ -36,32 +47,57 @@ const api = axios.create({
  * Converts camelCase form structure to snake_case API format
  */
 function transformBookingData(bookingData: SubmitBookingPayload) {
-  const { primaryPassenger, groupMembers, paymentMode, paymentAmount, paymentProof } = bookingData;
+  const {
+    primaryPassenger,
+    groupMembers,
+    paymentMode,
+    paymentType,
+    transactionIdUtr,
+    paymentPendingStatus,
+    paymentProof,
+  } = bookingData;
 
   // Transform group members to JSON string
   const transformedGroupMembers = groupMembers.length > 0 
     ? JSON.stringify(groupMembers.map((m) => ({
         name: m.name,
+        dob: m.dob,
         age: m.age,
         gender: m.gender,
+        relationship: m.relationship,
         aadhaar_number: normalizeAadhaar(m.aadhaar),
         seat_preference: m.seatPreference,
+        requires_accessibility_support:
+          m.requiresAccessibilitySupport === "yes",
+        accessibility_note: m.accessibilityNote?.trim() || null,
       })))
     : null;
+
+  const computedPendingAmount =
+    paymentPendingStatus === "BALANCE_5000" ? 5000 : 0;
 
   return {
     // Primary passenger details
     name: primaryPassenger.name,
     phone: primaryPassenger.phone,
+    emergency_contact_number: primaryPassenger.emergencyContactNumber,
     aadhaar_number: normalizeAadhaar(primaryPassenger.aadhaar),
     gender: primaryPassenger.gender,
+    dob: primaryPassenger.dob,
     age: primaryPassenger.age,
     seat_preference: primaryPassenger.seatPreference,
+    room_preference: primaryPassenger.roomPreference,
+    requires_accessibility_support:
+      primaryPassenger.requiresAccessibilitySupport === "yes",
+    accessibility_note: primaryPassenger.accessibilityNote?.trim() || null,
     reference_name: primaryPassenger.referenceMember === "None" ? null : primaryPassenger.referenceMember,
     // Group members and payment
     group_members: transformedGroupMembers,
     payment_mode: paymentMode,
-    payment_amount: paymentAmount,
+    payment_type: paymentType?.trim() || null,
+    transaction_id_utr: transactionIdUtr?.trim() || null,
+    payment_pending_status: paymentPendingStatus || null,
+    payment_amount: computedPendingAmount,
     payment_proof: paymentProof, // File object
   };
 }
@@ -80,10 +116,24 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
     // Add all string fields
     formData.append("name", transformedData.name);
     formData.append("phone", transformedData.phone);
+    formData.append(
+      "emergency_contact_number",
+      transformedData.emergency_contact_number,
+    );
     formData.append("aadhaar_number", transformedData.aadhaar_number);
     formData.append("gender", transformedData.gender);
+    formData.append("dob", transformedData.dob);
     formData.append("age", transformedData.age.toString());
     formData.append("seat_preference", transformedData.seat_preference);
+    formData.append("room_preference", transformedData.room_preference);
+    formData.append(
+      "requires_accessibility_support",
+      transformedData.requires_accessibility_support ? "true" : "false",
+    );
+
+    if (transformedData.accessibility_note) {
+      formData.append("accessibility_note", transformedData.accessibility_note);
+    }
     
     if (transformedData.reference_name) {
       formData.append("reference_name", transformedData.reference_name);
@@ -91,6 +141,24 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
     
     if (transformedData.group_members) {
       formData.append("group_members", transformedData.group_members);
+    }
+
+    formData.append("payment_mode", transformedData.payment_mode);
+    formData.append("payment_amount", transformedData.payment_amount.toString());
+
+    if (transformedData.payment_pending_status) {
+      formData.append(
+        "payment_pending_status",
+        transformedData.payment_pending_status,
+      );
+    }
+
+    if (transformedData.payment_type) {
+      formData.append("payment_type", transformedData.payment_type);
+    }
+
+    if (transformedData.transaction_id_utr) {
+      formData.append("transaction_id_utr", transformedData.transaction_id_utr);
     }
     
     // Add file if present (for online payments)
@@ -102,6 +170,10 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
     console.log("Submitting booking with FormData:", {
       name: transformedData.name,
       phone: transformedData.phone,
+      paymentMode: transformedData.payment_mode,
+      paymentAmount: transformedData.payment_amount,
+      paymentType: transformedData.payment_type,
+      transactionIdUtr: transformedData.transaction_id_utr,
       groupMembers: transformedData.group_members ? JSON.parse(transformedData.group_members) : [],
       hasPaymentProof: !!transformedData.payment_proof,
     });
