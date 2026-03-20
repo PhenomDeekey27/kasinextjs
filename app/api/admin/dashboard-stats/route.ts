@@ -4,7 +4,7 @@ import { TRAIN_CONFIG } from "@/lib/constants";
 
 /**
  * GET /api/admin/dashboard-stats
- * Fetch dashboard statistics: total seats, booked seats, pending verifications, needs review
+ * Fetch dashboard statistics: available seats, booked seats, pending verifications, needs review
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
       SELECT COUNT(*) as count FROM seats WHERE is_booked = true
     `);
     const bookedSeats = parseInt(bookedResult.rows[0].count) || 0;
+
+    // Available Seats - total seats minus booked seats
+    const availableSeats = totalSeats - bookedSeats;
 
     // Pending Verification - count bookings where booking_status = 'pending_verification'
     const pendingResult = await query(`
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
     const needsReview = parseInt(reviewResult.rows[0].count) || 0;
 
     return NextResponse.json({
-      totalSeats,
+      availableSeats,
       bookedSeats,
       pendingVerification,
       needsReview,

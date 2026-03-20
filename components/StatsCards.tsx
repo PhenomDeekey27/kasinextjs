@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { TRAIN_CONFIG } from "@/lib/constants";
 
 interface StatsData {
-  totalSeats: number;
+  availableSeats: number;
   bookedSeats: number;
   pendingVerification: number;
   needsReview: number;
@@ -14,7 +14,7 @@ interface StatsData {
 
 export function StatsCards() {
   const [stats, setStats] = useState<StatsData>({
-    totalSeats: TRAIN_CONFIG.TOTAL_SEATS,
+    availableSeats: TRAIN_CONFIG.TOTAL_SEATS,
     bookedSeats: 0,
     pendingVerification: 0,
     needsReview: 0,
@@ -46,12 +46,12 @@ export function StatsCards() {
 
   const statsConfig = [
     {
-      title: "Total Seats",
-      value: stats.totalSeats.toString(),
+      title: "Available Seats",
+      value: stats.availableSeats.toString(),
       icon: Train,
-      description: "Across " + TRAIN_CONFIG.TOTAL_COACHES + " coaches",
-      color: "text-blue-600",
-      bg: "bg-blue-100",
+      description: "Ready to book",
+      color: "text-green-600",
+      bg: "bg-green-100",
     },
     {
       title: "Booked Seats",

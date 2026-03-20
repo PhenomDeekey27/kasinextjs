@@ -14,7 +14,7 @@ interface BookingRecord {
   room_preference: string | null;
   requires_accessibility_support: boolean;
   payment_mode: string | null;
-  payment_type: string | null;
+  transaction_id_utr: string | null;
   payment_pending_status: string | null;
   seat_numbers: number[];
   seat_assignments: Array<{
@@ -45,7 +45,7 @@ interface BookingQueryRow {
   room_preference: string | null;
   requires_accessibility_support: unknown;
   payment_mode: string | null;
-  payment_type: string | null;
+  transaction_id_utr: string | null;
   payment_pending_status: string | null;
   seat_numbers: unknown;
   seat_assignments: unknown;
@@ -91,9 +91,9 @@ export async function GET(request: NextRequest) {
     const roomPreference = searchParams.get("roomPreference");
     const accessibilitySupport = searchParams.get("accessibilitySupport");
     const paymentMode = searchParams.get("paymentMode");
-    const paymentType = searchParams.get("paymentType");
     const paymentPendingStatus = searchParams.get("paymentPendingStatus");
     const coachNumber = searchParams.get("coachNumber")?.trim();
+    const transactionId = searchParams.get("transactionId")?.trim();
     const referenceName = searchParams.get("referenceName")?.trim();
     const minPassengers = searchParams.get("minPassengers");
     const maxPassengers = searchParams.get("maxPassengers");
@@ -185,13 +185,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (paymentMode) {
-      whereConditions.push(`LOWER(COALESCE(p.payment_mode, '')) = $${params.length + 1}`);
-      params.push(paymentMode.toLowerCase());
-    }
-
-    if (paymentType) {
-      whereConditions.push(`LOWER(COALESCE(p.payment_type, '')) = $${params.length + 1}`);
-      params.push(paymentType.toLowerCase());
+      whereConditions.push(`LOWER(COALESCE(p.payment_mode, '')) = LOWER($${params.length + 1})`);
+      params.push(paymentMode);
     }
 
     if (paymentPendingStatus) {
@@ -202,6 +197,11 @@ export async function GET(request: NextRequest) {
     if (coachNumber) {
       whereConditions.push(`COALESCE(c.coach_number, '') ILIKE $${params.length + 1}`);
       params.push(`%${coachNumber}%`);
+    }
+
+    if (transactionId) {
+      whereConditions.push(`COALESCE(p.transaction_id_utr, '') ILIKE $${params.length + 1}`);
+      params.push(`%${transactionId}%`);
     }
 
     if (referenceName) {
@@ -292,7 +292,7 @@ export async function GET(request: NextRequest) {
           p.room_preference,
           COALESCE(p.requires_accessibility_support, false) AS requires_accessibility_support,
           p.payment_mode,
-          p.payment_type,
+          p.transaction_id_utr,
           p.payment_pending_status,
           COALESCE(ARRAY_AGG(s.seat_number ORDER BY s.seat_number), ARRAY[]::INT[]) AS seat_numbers,
           COALESCE(MIN(c.coach_number), 'N/A') AS coach_number,
@@ -338,7 +338,7 @@ export async function GET(request: NextRequest) {
           p.room_preference,
           p.requires_accessibility_support,
           p.payment_mode,
-          p.payment_type,
+            p.transaction_id_utr,
           p.payment_pending_status
       )
       SELECT *
@@ -376,7 +376,7 @@ export async function GET(request: NextRequest) {
       room_preference: row.room_preference,
       requires_accessibility_support: Boolean(row.requires_accessibility_support),
       payment_mode: row.payment_mode,
-      payment_type: row.payment_type,
+      transaction_id_utr: row.transaction_id_utr,
       payment_pending_status: row.payment_pending_status,
       seat_numbers: Array.isArray(row.seat_numbers)
         ? row.seat_numbers
@@ -414,7 +414,6 @@ export async function GET(request: NextRequest) {
         roomPreference,
         accessibilitySupport,
         paymentMode,
-        paymentType,
         paymentPendingStatus,
         coachNumber,
         referenceName,

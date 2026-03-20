@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { ConditionalChrome } from "@/components/ConditionalChrome";
 import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -26,9 +25,7 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <ConditionalChrome>{children}</ConditionalChrome>
         <Toaster />
       </body>
     </html>

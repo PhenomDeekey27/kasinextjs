@@ -1,12 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import axios from "axios";
+import { Popover } from "@base-ui/react/popover";
+import { format } from "date-fns";
+import { DayPicker } from "react-day-picker";
 import { Button } from "./ui/button";
 import {
   Form,
@@ -24,67 +27,76 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import {
   Card,
   CardContent,
 } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { getAllStates, getDistricts } from "india-state-district";
 import {
   BERTH_TYPES,
   SUPPORT_CONTACT_NUMBER,
   TRAIN_CONFIG,
 } from "@/lib/constants";
-import { getDuplicateAadhaarMessage, normalizeAadhaar } from "@/lib/utils";
-import { Info, FileText, X } from "lucide-react";
+import { normalizeAadhaar } from "@/lib/utils";
+import { CalendarDays, FileText, X } from "lucide-react";
 import { BookingSuccess } from "./BookingSuccess";
 import { submitBooking, fetchReferenceMembers } from "@/lib/api";
 
-const PAYMENT_TYPE_OPTIONS = [
+const PAYMENT_MODE_OPTIONS = [
   "UPI",
+  "Bank Transfer",
   "Net Banking",
-  "IMPS",
-  "NEFT",
-  "RTGS",
-  "Debit Card",
   "Credit Card",
-  "Wallet",
+  "Debit Card",
+  "Cash",
   "Other",
 ] as const;
 
+const PAYMENT_MODES_REQUIRING_TRANSACTION = [
+  "UPI",
+  "Bank Transfer",
+  "Net Banking",
+  "Credit Card",
+  "Debit Card",
+] as const;
+
+const PAYMENT_MODES_REQUIRING_PROOF = PAYMENT_MODES_REQUIRING_TRANSACTION;
+
 const PENDING_PAYMENT_OPTIONS = ["FULL_PAID", "BALANCE_5000"] as const;
 
+const GENDER_OPTIONS = ["Male", "Female", "Other"] as const;
+const INDIAN_STATES = getAllStates();
+const STATE_CODE_BY_NAME = Object.fromEntries(
+  INDIAN_STATES.map((state) => [state.name.toLowerCase(), state.code]),
+);
+const INDIAN_STATE_NAMES = INDIAN_STATES.map((state) => state.name).sort();
+
+const NATION_OPTIONS = ["India"] as const;
+
 const RELATIONSHIP_OPTIONS_BY_GENDER: Record<string, string[]> = {
-  Male: ["Brother", "Son", "Father", "Husband", "Cousin Brother", "Friend"],
-  Female: ["Sister", "Daughter", "Mother", "Wife", "Cousin Sister", "Friend"],
-  Other: ["Sibling", "Child", "Parent", "Spouse", "Cousin", "Friend"],
+  Male: [
+    "Brother",
+    "Son",
+    "Father",
+    "Husband",
+    "Uncle",
+    "Cousin Brother",
+    "Friend",
+    "Other",
+  ],
+  Female: [
+    "Sister",
+    "Daughter",
+    "Mother",
+    "Wife",
+    "Aunt",
+    "Cousin Sister",
+    "Friend",
+    "Other",
+  ],
+  Other: ["Sibling", "Child", "Parent", "Spouse", "Cousin", "Friend", "Other"],
 };
-
-function toDdMmYyyy(isoDate: string): string {
-  if (!isoDate) {
-    return "";
-  }
-
-  const [year, month, day] = isoDate.split("-");
-  if (!year || !month || !day) {
-    return "";
-  }
-
-  return `${day}/${month}/${year}`;
-}
-
-function toIsoDate(displayDate: string): string {
-  if (!displayDate) {
-    return "";
-  }
-
-  const [day, month, year] = displayDate.split("/");
-  if (!day || !month || !year) {
-    return "";
-  }
-
-  return `${year}-${month}-${day}`;
-}
 
 function calculateAgeFromDob(dob: string): number {
   if (!dob) {
@@ -126,6 +138,106 @@ function calculateAgeFromDob(dob: string): number {
   return age >= 0 ? age : 0;
 }
 
+function parseDobToDate(dob: string): Date | undefined {
+  if (!dob) {
+    return undefined;
+  }
+
+  const [dayString, monthString, yearString] = dob.split("/");
+  const day = Number(dayString);
+  const month = Number(monthString);
+  const year = Number(yearString);
+
+  if (
+    !Number.isInteger(day) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(year)
+  ) {
+    return undefined;
+  }
+
+  const parsedDate = new Date(year, month - 1, day);
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() !== month - 1 ||
+    parsedDate.getDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return parsedDate;
+}
+
+function formatDateToDob(date: Date): string {
+  return format(date, "dd/MM/yyyy");
+}
+
+function DobCalendarField({
+  value,
+  onSelect,
+}: {
+  value: string;
+  onSelect: (nextDob: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedDate = parseDobToDate(value);
+  const maxDate = new Date();
+  const minDate = new Date(1900, 0, 1);
+
+  return (
+    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Popover.Trigger className="flex h-11 w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-left text-sm shadow-sm transition-colors hover:border-slate-400 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
+        <span className={selectedDate ? "text-foreground" : "text-muted-foreground"}>
+          {selectedDate ? format(selectedDate, "dd/MM/yyyy") : "Pick date of birth"}
+        </span>
+        <CalendarDays className="size-4 text-slate-500" />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="bottom" align="start" sideOffset={8}>
+          <Popover.Popup className="z-50 rounded-xl border bg-white p-3 shadow-xl ring-1 ring-slate-200">
+            <DayPicker
+              mode="single"
+              selected={selectedDate}
+              onSelect={(nextDate) => {
+                if (!nextDate) {
+                  return;
+                }
+                onSelect(formatDateToDob(nextDate));
+                setIsOpen(false);
+              }}
+              captionLayout="dropdown"
+              defaultMonth={selectedDate || new Date(2000, 0, 1)}
+              startMonth={minDate}
+              endMonth={maxDate}
+              disabled={{ before: minDate, after: maxDate }}
+              className="text-sm"
+              classNames={{
+                month_caption: "text-sm font-medium",
+                caption_label: "hidden",
+                nav: "hidden",
+                dropdown_root:
+                  "rounded-md border border-slate-300 bg-white px-2 py-1 text-sm",
+                weekday: "w-9 text-center text-xs font-medium text-slate-500",
+                day: "size-9 rounded-md p-0 font-normal hover:bg-slate-100",
+                selected:
+                  "bg-blue-600 text-white hover:bg-blue-600 hover:text-white",
+                today: "ring-1 ring-blue-300",
+              }}
+            />
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+const accessibilitySupportFieldSchema = z
+  .string()
+  .min(1, "Please select accessibility support requirement")
+  .refine((value) => ["no", "yes"].includes(value), {
+    message: "Please select accessibility support requirement",
+  });
+
 const passengerSchema = z.object({
   name: z.string().min(2, "Name is too short").max(50),
   dob: z
@@ -137,7 +249,7 @@ const passengerSchema = z.object({
   age: z.coerce.number().min(1, "Invalid age").max(120),
   gender: z.enum(["Male", "Female", "Other"]),
   seatPreference: z.enum(["LB", "MB", "UB", "SL", "SU", "No Preference"]),
-  requiresAccessibilitySupport: z.enum(["no", "yes"]),
+  requiresAccessibilitySupport: accessibilitySupportFieldSchema,
   accessibilityNote: z.string().optional(),
 });
 
@@ -148,14 +260,26 @@ const aadhaarFieldSchema = z
     "Aadhaar must be 12 digits",
   );
 
+const genderFieldSchema = z
+  .string()
+  .min(1, "Please select gender")
+  .refine((value) => GENDER_OPTIONS.includes(value as (typeof GENDER_OPTIONS)[number]), {
+    message: "Please select a valid gender",
+  });
+
 const formSchema = z
   .object({
     primaryPassenger: passengerSchema.extend({
+      gender: genderFieldSchema,
       phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
       emergencyContactNumber: z
         .string()
         .regex(/^\d{10}$/, "Emergency contact must be 10 digits"),
       aadhaar: aadhaarFieldSchema,
+      street: z.string().min(3, "Please enter street / address"),
+      nation: z.string().min(2, "Please select nation"),
+      state: z.string().min(2, "Please select state"),
+      district: z.string().min(2, "Please select district"),
       roomPreference: z
         .string()
         .refine((value) => ["single", "group"].includes(value), {
@@ -166,6 +290,7 @@ const formSchema = z
     groupMembers: z
       .array(
         passengerSchema.extend({
+          gender: genderFieldSchema,
           aadhaar: aadhaarFieldSchema,
           relationship: z.string().min(1, "Please select relationship"),
         }),
@@ -174,11 +299,10 @@ const formSchema = z
         TRAIN_CONFIG.MAX_GROUP_SIZE - 1,
         `Max group size is ${TRAIN_CONFIG.MAX_GROUP_SIZE}`,
       ),
-    paymentMode: z.enum(["online", "manual"]),
-    paymentType: z.string().optional(),
+    paymentMode: z.enum(PAYMENT_MODE_OPTIONS),
     transactionIdUtr: z.string().optional(),
     paymentPendingStatus: z.enum(PENDING_PAYMENT_OPTIONS).optional(),
-    paymentProof: z.any().optional(), // Payment proof for online bookings
+    paymentProof: z.any().optional(),
   })
   .superRefine((values, ctx) => {
     const seenAadhaars = new Set<string>();
@@ -226,31 +350,42 @@ const formSchema = z
       });
     }
 
-    if (values.paymentMode === "online") {
-      if (!values.paymentType || values.paymentType.trim().length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["paymentType"],
-          message: "Please select a payment type.",
-        });
-      }
+    if (!values.paymentPendingStatus) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["paymentPendingStatus"],
+        message: "Please choose pending amount status.",
+      });
+    }
 
-      if (
-        !values.transactionIdUtr ||
-        values.transactionIdUtr.trim().length < 6
-      ) {
+    if (
+      PAYMENT_MODES_REQUIRING_TRANSACTION.includes(
+        values.paymentMode as (typeof PAYMENT_MODES_REQUIRING_TRANSACTION)[number],
+      )
+    ) {
+      if (!values.transactionIdUtr || values.transactionIdUtr.trim().length < 6) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["transactionIdUtr"],
-          message: "Please enter a valid Transaction ID / UTR.",
+          message: "Please enter a valid transaction reference.",
         });
       }
+    }
 
-      if (!values.paymentPendingStatus) {
+    if (
+      PAYMENT_MODES_REQUIRING_PROOF.includes(
+        values.paymentMode as (typeof PAYMENT_MODES_REQUIRING_PROOF)[number],
+      )
+    ) {
+      if (
+        !values.paymentProof ||
+        !(values.paymentProof instanceof FileList) ||
+        values.paymentProof.length === 0
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["paymentPendingStatus"],
-          message: "Please choose pending amount status.",
+          path: ["paymentProof"],
+          message: "Please upload payment proof.",
         });
       }
     }
@@ -302,19 +437,22 @@ export function BookingForm() {
         name: "",
         dob: "",
         age: 0,
-        gender: "Male",
+        gender: "",
         seatPreference: "No Preference",
-        requiresAccessibilitySupport: "no",
+        requiresAccessibilitySupport: "",
         accessibilityNote: "",
         phone: "",
         emergencyContactNumber: "",
         aadhaar: "",
+        street: "",
+        nation: "India",
+        state: "",
+        district: "",
         roomPreference: "",
         referenceMember: "", // default
       },
       groupMembers: [],
-      paymentMode: "online",
-      paymentType: "",
+      paymentMode: "",
       transactionIdUtr: "",
       paymentPendingStatus: undefined,
     },
@@ -330,7 +468,70 @@ export function BookingForm() {
   });
 
   const paymentMode = form.watch("paymentMode");
+  const isCashPayment = paymentMode === "Cash";
+  const shouldShowTransactionField = paymentMode !== "Cash";
+  const shouldShowPaymentProofField = paymentMode !== "Cash";
+  const isTransactionRequired =
+    PAYMENT_MODES_REQUIRING_TRANSACTION.includes(
+      paymentMode as (typeof PAYMENT_MODES_REQUIRING_TRANSACTION)[number],
+    );
+  const isPaymentProofRequired =
+    PAYMENT_MODES_REQUIRING_PROOF.includes(
+      paymentMode as (typeof PAYMENT_MODES_REQUIRING_PROOF)[number],
+    );
+
+  const transactionFieldLabel = useMemo(() => {
+    if (paymentMode === "UPI") {
+      return "UPI Transaction ID";
+    }
+
+    if (["Bank Transfer", "Net Banking"].includes(paymentMode || "")) {
+      return "UTR / Reference Number";
+    }
+
+    if (["Credit Card", "Debit Card"].includes(paymentMode || "")) {
+      return "Transaction Reference Number";
+    }
+
+    return "Transaction ID / Reference Number";
+  }, [paymentMode]);
+  const selectedNation = form.watch("primaryPassenger.nation");
+  const selectedState = form.watch("primaryPassenger.state");
   const totalPassengers = 1 + memberFields.length;
+
+  const normalizedNation = (selectedNation || "").trim().toLowerCase();
+  const isIndiaSelected = normalizedNation === "india";
+  const availableStates = useMemo(
+    () => (isIndiaSelected ? [...INDIAN_STATE_NAMES] : []),
+    [isIndiaSelected],
+  );
+
+  const matchedStateName = useMemo(
+    () =>
+      availableStates.find(
+        (stateName) =>
+          stateName.toLowerCase() === (selectedState || "").trim().toLowerCase(),
+      ) || "",
+    [availableStates, selectedState],
+  );
+
+  const availableDistricts = useMemo(
+    () => {
+      if (!isIndiaSelected || !matchedStateName) {
+        return [];
+      }
+
+      const stateCode = STATE_CODE_BY_NAME[matchedStateName.toLowerCase()];
+      if (!stateCode) {
+        return [];
+      }
+
+      return getDistricts(stateCode).sort((left, right) =>
+        left.localeCompare(right),
+      );
+    },
+    [isIndiaSelected, matchedStateName],
+  );
 
   const referenceQuery = (
     form.watch("primaryPassenger.referenceMember") || ""
@@ -350,19 +551,22 @@ export function BookingForm() {
         name: "",
         dob: "",
         age: 0,
-        gender: "Male",
+        gender: "",
         seatPreference: "No Preference",
-        requiresAccessibilitySupport: "no",
+        requiresAccessibilitySupport: "",
         accessibilityNote: "",
         phone: "",
         emergencyContactNumber: "",
         aadhaar: "",
+        street: "",
+        nation: "India",
+        state: "",
+        district: "",
         roomPreference: "",
         referenceMember: "",
       },
       groupMembers: [],
-      paymentMode: "online",
-      paymentType: "",
+      paymentMode: "",
       transactionIdUtr: "",
       paymentPendingStatus: undefined,
       paymentProof: undefined,
@@ -380,21 +584,49 @@ export function BookingForm() {
     }
   }, [searchParams, resetBookingForm]);
 
-  const onSubmit = async (data: BookingFormValues) => {
-    // Validation: Payment proof required for online payments
-    if (
-      data.paymentMode === "online" &&
-      (!data.paymentProof || (data.paymentProof as FileList).length === 0)
-    ) {
-      toast({
-        title: "Payment Proof Required",
-        description:
-          "Please upload the payment screenshot for online bookings.",
-        variant: "destructive",
-      });
+  useEffect(() => {
+    if (!isIndiaSelected) {
+      if (form.getValues("primaryPassenger.state")) {
+        form.setValue("primaryPassenger.state", "", { shouldValidate: false });
+      }
+      if (form.getValues("primaryPassenger.district")) {
+        form.setValue("primaryPassenger.district", "", {
+          shouldValidate: false,
+        });
+      }
       return;
     }
 
+    if (!matchedStateName && form.getValues("primaryPassenger.district")) {
+      form.setValue("primaryPassenger.district", "", { shouldValidate: false });
+    }
+  }, [form, isIndiaSelected, matchedStateName]);
+
+  useEffect(() => {
+    if (
+      selectedState &&
+      matchedStateName &&
+      form.getValues("primaryPassenger.district") &&
+      !availableDistricts.some(
+        (districtName) =>
+          districtName.toLowerCase() ===
+          form.getValues("primaryPassenger.district").toLowerCase(),
+      )
+    ) {
+      form.setValue("primaryPassenger.district", "", { shouldValidate: false });
+    }
+  }, [availableDistricts, form, matchedStateName, selectedState]);
+
+  useEffect(() => {
+    if (isCashPayment) {
+      form.setValue("transactionIdUtr", "", { shouldValidate: false });
+      form.setValue("paymentProof", undefined, { shouldValidate: false });
+      setPaymentProofPreview(null);
+      setPaymentUploadKey((prev) => prev + 1);
+    }
+  }, [form, isCashPayment]);
+
+  const onSubmit = async (data: BookingFormValues) => {
     try {
       setIsSubmitting(true);
       const response = await submitBooking(data);
@@ -425,9 +657,7 @@ export function BookingForm() {
         if (error.response?.status === 409) {
           errorMessage =
             (error.response?.data as { error?: string } | undefined)?.error ||
-            getDuplicateAadhaarMessage(
-              normalizeAadhaar(data.primaryPassenger.aadhaar),
-            );
+            "Duplicate value found. Please use a unique Aadhaar or transaction reference.";
         } else {
           console.error("Booking submission error:", error);
         }
@@ -466,9 +696,9 @@ export function BookingForm() {
           <Image
             src="/logo.jpeg"
             alt="J Tourism logo"
-            width={36}
-            height={36}
-            className="w-9 h-9 rounded-md object-cover border border-white/30"
+            width={52}
+            height={52}
+            className="w-12 h-12 rounded-md object-cover bg-white p-1"
           />
           <h2 className="text-2xl font-bold">Book Train Seats</h2>
         </div>
@@ -517,12 +747,9 @@ export function BookingForm() {
                       <FormItem>
                         <FormLabel>Date of Birth (DD/MM/YYYY)</FormLabel>
                         <FormControl>
-                          <Input
-                            type="date"
-                            max={new Date().toISOString().split("T")[0]}
-                            value={toIsoDate(field.value)}
-                            onChange={(e) => {
-                              const nextDob = toDdMmYyyy(e.target.value);
+                          <DobCalendarField
+                            value={field.value}
+                            onSelect={(nextDob) => {
                               field.onChange(nextDob);
                               form.setValue(
                                 "primaryPassenger.age",
@@ -566,13 +793,15 @@ export function BookingForm() {
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Gender" />
+                              <SelectValue placeholder="Select gender" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Female">Female</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            {GENDER_OPTIONS.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -626,6 +855,107 @@ export function BookingForm() {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="primaryPassenger.street"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Street / Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter street and area" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="primaryPassenger.nation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nation</FormLabel>
+                      <FormControl>
+                        <Input
+                          list="nation-options"
+                          placeholder="Search or select nation"
+                          autoComplete="off"
+                          className="h-11 rounded-lg border-slate-300 bg-white shadow-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <datalist id="nation-options">
+                        {NATION_OPTIONS.map((nation) => (
+                          <option key={nation} value={nation} />
+                        ))}
+                      </datalist>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="primaryPassenger.state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        State {isIndiaSelected ? "(India)" : ""}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          list="india-state-options"
+                          placeholder={
+                            isIndiaSelected
+                              ? "Search or select state"
+                              : "Select India as nation first"
+                          }
+                          autoComplete="off"
+                          disabled={!isIndiaSelected}
+                          className="h-11 rounded-lg border-slate-300 bg-white shadow-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <datalist id="india-state-options">
+                        {availableStates.map((stateName) => (
+                          <option key={stateName} value={stateName} />
+                        ))}
+                      </datalist>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="primaryPassenger.district"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>District</FormLabel>
+                      <FormControl>
+                        <Input
+                          list="district-options"
+                          placeholder={
+                            isIndiaSelected
+                              ? "Search or select district"
+                              : "Select India and state first"
+                          }
+                          autoComplete="off"
+                          disabled={!isIndiaSelected || !matchedStateName}
+                          className="h-11 rounded-lg border-slate-300 bg-white shadow-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <datalist id="district-options">
+                        {availableDistricts.map((districtName) => (
+                          <option key={districtName} value={districtName} />
+                        ))}
+                      </datalist>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -893,12 +1223,9 @@ export function BookingForm() {
                             Date of Birth (DD/MM/YYYY)
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              type="date"
-                              max={new Date().toISOString().split("T")[0]}
-                              value={toIsoDate(field.value)}
-                              onChange={(e) => {
-                                const nextDob = toDdMmYyyy(e.target.value);
+                            <DobCalendarField
+                              value={field.value}
+                              onSelect={(nextDob) => {
                                 field.onChange(nextDob);
                                 form.setValue(
                                   `groupMembers.${index}.age`,
@@ -939,19 +1266,26 @@ export function BookingForm() {
                           <Select
                             onValueChange={(value) => {
                               field.onChange(value);
+                              form.setValue(
+                                `groupMembers.${index}.relationship`,
+                                "",
+                                { shouldValidate: false, shouldDirty: true },
+                              );
                               form.clearErrors(`groupMembers.${index}.relationship`);
                             }}
                             value={field.value}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Gender" />
+                                <SelectValue placeholder="Select gender" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="Male">Male</SelectItem>
-                              <SelectItem value="Female">Female</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
+                              {GENDER_OPTIONS.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -1001,6 +1335,7 @@ export function BookingForm() {
                           <FormItem>
                             <FormLabel className="text-xs">Relationship</FormLabel>
                             <Select
+                              key={`${index}-${selectedGender}`}
                               onValueChange={field.onChange}
                               value={field.value}
                             >
@@ -1086,11 +1421,11 @@ export function BookingForm() {
                       name: "",
                       dob: "",
                       age: 0,
-                      gender: "Male",
+                      gender: "",
                       relationship: "",
                       aadhaar: "",
                       seatPreference: "No Preference",
-                      requiresAccessibilitySupport: "no",
+                      requiresAccessibilitySupport: "",
                       accessibilityNote: "",
                     });
                   } else {
@@ -1119,33 +1454,6 @@ export function BookingForm() {
 
               {/* Payment Details */}
               <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
-                <FormField
-                  control={form.control}
-                  name="paymentMode"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Booking Type</FormLabel>
-                      <FormControl>
-                        <Tabs
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          className="w-full max-w-md"
-                        >
-                          <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="online">
-                              Online Payment
-                            </TabsTrigger>
-                            <TabsTrigger value="manual">
-                              Manual Booking
-                            </TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -1175,147 +1483,137 @@ export function BookingForm() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="paymentMode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Mode</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select payment mode" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PAYMENT_MODE_OPTIONS.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                  {paymentMode === "online" && (
-                    <>
+                  {shouldShowTransactionField && (
+                    <FormField
+                      control={form.control}
+                      name="transactionIdUtr"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {transactionFieldLabel}
+                            {isTransactionRequired ? " *" : " (Optional)"}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter transaction reference number"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
-                      <FormField
-                        control={form.control}
-                        name="paymentType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Payment Type</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select payment type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {PAYMENT_TYPE_OPTIONS.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  {shouldShowPaymentProofField && (
+                    <FormField
+                      control={form.control}
+                      name="paymentProof"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>
+                            Payment Screenshot Proof
+                            {isPaymentProofRequired ? " *" : " (Optional)"}
+                          </FormLabel>
+                          <FormControl>
+                            <div className="space-y-3">
+                              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                  <FileText className="w-8 h-8 mb-3 text-slate-400" />
+                                  <p className="mb-2 text-sm text-slate-500">
+                                    <span className="font-semibold">
+                                      Click to upload
+                                    </span>{" "}
+                                    or drag and drop
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    PNG, JPG up to 5MB
+                                  </p>
+                                </div>
+                                <Input
+                                  key={paymentUploadKey}
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    field.onChange(e.target.files);
+                                    if (e.target.files && e.target.files[0]) {
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        setPaymentProofPreview(
+                                          reader.result as string,
+                                        );
+                                      };
+                                      reader.readAsDataURL(e.target.files[0]);
+                                    }
+                                  }}
+                                />
+                              </label>
 
-                      <FormField
-                        control={form.control}
-                        name="transactionIdUtr"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Transaction ID / UTR</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter transaction reference number"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="paymentProof"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>Payment Screenshot Proof</FormLabel>
-                            <FormControl>
-                              <div className="space-y-3">
-                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
-                                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                    <FileText className="w-8 h-8 mb-3 text-slate-400" />
-                                    <p className="mb-2 text-sm text-slate-500">
-                                      <span className="font-semibold">
-                                        Click to upload
-                                      </span>{" "}
-                                      or drag and drop
+                              {paymentProofPreview && (
+                                <div className="flex items-start gap-3 rounded-lg border bg-white p-3">
+                                  <img
+                                    src={paymentProofPreview}
+                                    alt="Payment proof preview"
+                                    className="h-20 w-20 rounded-md border object-cover"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-slate-700">
+                                      Uploaded image preview
                                     </p>
                                     <p className="text-xs text-slate-500">
-                                      PNG, JPG up to 5MB
+                                      If this is wrong, remove it and upload
+                                      again.
                                     </p>
                                   </div>
-                                  <Input
-                                    key={paymentUploadKey}
-                                    type="file"
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      field.onChange(e.target.files);
-                                      if (e.target.files && e.target.files[0]) {
-                                        const reader = new FileReader();
-                                        reader.onloadend = () => {
-                                          setPaymentProofPreview(
-                                            reader.result as string,
-                                          );
-                                        };
-                                        reader.readAsDataURL(e.target.files[0]);
-                                      }
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setPaymentProofPreview(null);
+                                      form.setValue("paymentProof", undefined);
+                                      setPaymentUploadKey((prev) => prev + 1);
                                     }}
-                                  />
-                                </label>
-
-                                {paymentProofPreview && (
-                                  <div className="flex items-start gap-3 rounded-lg border bg-white p-3">
-                                    <img
-                                      src={paymentProofPreview}
-                                      alt="Payment proof preview"
-                                      className="h-20 w-20 rounded-md border object-cover"
-                                    />
-                                    <div className="flex-1">
-                                      <p className="text-sm font-medium text-slate-700">
-                                        Uploaded image preview
-                                      </p>
-                                      <p className="text-xs text-slate-500">
-                                        If this is wrong, remove it and upload
-                                        again.
-                                      </p>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => {
-                                        setPaymentProofPreview(null);
-                                        form.setValue("paymentProof", undefined);
-                                        setPaymentUploadKey((prev) => prev + 1);
-                                      }}
-                                      aria-label="Remove uploaded payment screenshot"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
+                                    aria-label="Remove uploaded payment screenshot"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   )}
                 </div>
-
-                {paymentMode === "manual" && (
-                  <div className="bg-amber-50 rounded-lg p-4 flex items-start space-x-3 text-amber-800">
-                    <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm">
-                      You selected manual booking. Your seats will be held
-                      temporarily. Our coordinators will contact you soon for
-                      offline payment processing.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 

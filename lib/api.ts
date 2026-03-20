@@ -9,6 +9,10 @@ interface BookingPrimaryPassenger {
   gender: string;
   dob: string;
   age: number;
+  street: string;
+  nation: string;
+  state: string;
+  district: string;
   seatPreference: string;
   roomPreference: string;
   requiresAccessibilitySupport: "no" | "yes";
@@ -31,8 +35,14 @@ interface BookingGroupMember {
 interface SubmitBookingPayload {
   primaryPassenger: BookingPrimaryPassenger;
   groupMembers: BookingGroupMember[];
-  paymentMode: "online" | "manual";
-  paymentType?: string;
+  paymentMode:
+    | "UPI"
+    | "Bank Transfer"
+    | "Net Banking"
+    | "Credit Card"
+    | "Debit Card"
+    | "Cash"
+    | "Other";
   transactionIdUtr?: string;
   paymentPendingStatus?: "FULL_PAID" | "BALANCE_5000";
   paymentProof?: FileList;
@@ -51,7 +61,6 @@ function transformBookingData(bookingData: SubmitBookingPayload) {
     primaryPassenger,
     groupMembers,
     paymentMode,
-    paymentType,
     transactionIdUtr,
     paymentPendingStatus,
     paymentProof,
@@ -85,6 +94,10 @@ function transformBookingData(bookingData: SubmitBookingPayload) {
     gender: primaryPassenger.gender,
     dob: primaryPassenger.dob,
     age: primaryPassenger.age,
+    street: primaryPassenger.street,
+    nation: primaryPassenger.nation,
+    state: primaryPassenger.state,
+    district: primaryPassenger.district,
     seat_preference: primaryPassenger.seatPreference,
     room_preference: primaryPassenger.roomPreference,
     requires_accessibility_support:
@@ -94,7 +107,6 @@ function transformBookingData(bookingData: SubmitBookingPayload) {
     // Group members and payment
     group_members: transformedGroupMembers,
     payment_mode: paymentMode,
-    payment_type: paymentType?.trim() || null,
     transaction_id_utr: transactionIdUtr?.trim() || null,
     payment_pending_status: paymentPendingStatus || null,
     payment_amount: computedPendingAmount,
@@ -124,6 +136,10 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
     formData.append("gender", transformedData.gender);
     formData.append("dob", transformedData.dob);
     formData.append("age", transformedData.age.toString());
+    formData.append("street", transformedData.street);
+    formData.append("nation", transformedData.nation);
+    formData.append("state", transformedData.state);
+    formData.append("district", transformedData.district);
     formData.append("seat_preference", transformedData.seat_preference);
     formData.append("room_preference", transformedData.room_preference);
     formData.append(
@@ -153,10 +169,6 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
       );
     }
 
-    if (transformedData.payment_type) {
-      formData.append("payment_type", transformedData.payment_type);
-    }
-
     if (transformedData.transaction_id_utr) {
       formData.append("transaction_id_utr", transformedData.transaction_id_utr);
     }
@@ -172,7 +184,6 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
       phone: transformedData.phone,
       paymentMode: transformedData.payment_mode,
       paymentAmount: transformedData.payment_amount,
-      paymentType: transformedData.payment_type,
       transactionIdUtr: transformedData.transaction_id_utr,
       groupMembers: transformedData.group_members ? JSON.parse(transformedData.group_members) : [],
       hasPaymentProof: !!transformedData.payment_proof,

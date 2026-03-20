@@ -228,13 +228,16 @@ export async function initDatabase(): Promise<void> {
         gender TEXT,
         dob TEXT,
         age INT,
+        street TEXT,
+        nation TEXT,
+        state TEXT,
+        district TEXT,
         seat_preference TEXT,
         room_preference TEXT,
         requires_accessibility_support BOOLEAN DEFAULT FALSE,
         accessibility_note TEXT,
         reference_name TEXT,
         payment_mode TEXT,
-        payment_type TEXT,
         transaction_id_utr TEXT,
         payment_pending_status TEXT,
         payment_amount NUMERIC(10,2),
@@ -279,7 +282,7 @@ export async function initDatabase(): Promise<void> {
         client,
         `
       ALTER TABLE passengers
-      ADD COLUMN IF NOT EXISTS payment_type TEXT
+      ADD COLUMN IF NOT EXISTS requires_accessibility_support BOOLEAN DEFAULT FALSE
       `,
       );
 
@@ -287,7 +290,7 @@ export async function initDatabase(): Promise<void> {
         client,
         `
       ALTER TABLE passengers
-      ADD COLUMN IF NOT EXISTS requires_accessibility_support BOOLEAN DEFAULT FALSE
+      DROP COLUMN IF EXISTS payment_type
       `,
       );
 
@@ -320,6 +323,38 @@ export async function initDatabase(): Promise<void> {
         `
       ALTER TABLE passengers
       ADD COLUMN IF NOT EXISTS payment_amount NUMERIC(10,2)
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS street TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS nation TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS state TEXT
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      ALTER TABLE passengers
+      ADD COLUMN IF NOT EXISTS district TEXT
       `,
       );
 
@@ -509,6 +544,15 @@ export async function initDatabase(): Promise<void> {
         `
       CREATE INDEX IF NOT EXISTS passengers_aadhaar_lookup_idx
       ON passengers (aadhaar_number)
+      `,
+      );
+
+      await queryWithClient(
+        client,
+        `
+      CREATE INDEX IF NOT EXISTS passengers_transaction_reference_lookup_idx
+      ON passengers (LOWER(TRIM(transaction_id_utr)))
+      WHERE transaction_id_utr IS NOT NULL AND TRIM(transaction_id_utr) <> ''
       `,
       );
 

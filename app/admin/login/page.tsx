@@ -50,11 +50,13 @@ export default function AdminLogin() {
 
       const redirectTo = searchParams.get("redirectTo") || "/admin/dashboard";
       router.push(redirectTo);
-    } catch (err: any) {
-      setError(err.message || "An error occurred during login");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "An error occurred during login";
+      setError(errorMessage);
       toast({
         title: "Login Failed",
-        description: err.message || "Invalid email or password",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -70,9 +72,9 @@ export default function AdminLogin() {
             <Image
               src="/logo.jpeg"
               alt="J Tourism logo"
-              width={56}
-              height={56}
-              className="w-14 h-14 rounded-full object-cover border-2 border-blue-100"
+              width={76}
+              height={76}
+              className="w-20 h-20 rounded-full object-cover border-2 border-blue-100 bg-white p-1"
             />
           </div>
           <CardTitle className="text-2xl font-bold">Admin Portal</CardTitle>
@@ -99,7 +101,7 @@ export default function AdminLogin() {
                 disabled={loading}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 pb-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
               </div>
