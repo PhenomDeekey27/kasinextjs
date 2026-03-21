@@ -112,6 +112,15 @@ function parseBooleanField(value: string | boolean, fieldLabel: string): boolean
   throw createRequestError(`${fieldLabel} must be yes or no.`, 400);
 }
 
+function validateGender(value: string, fieldLabel: string): string {
+  const normalized = (value || "").trim();
+  if (!["Male", "Female", "Other"].includes(normalized)) {
+    throw createRequestError(`${fieldLabel} gender is required.`, 400);
+  }
+
+  return normalized;
+}
+
 async function ensureAadhaarDoesNotExist(
   client: Awaited<ReturnType<typeof getClient>>,
   aadhaarNumbers: string[],
@@ -147,6 +156,34 @@ async function ensureAadhaarDoesNotExist(
   }
 }
 
+async function ensureTransactionReferenceDoesNotExist(
+  client: Awaited<ReturnType<typeof getClient>>,
+  transactionReference: string,
+) {
+  const normalizedReference = transactionReference.trim();
+  if (!normalizedReference) {
+    return;
+  }
+
+  const result = await client.query(
+    `
+    SELECT id
+    FROM passengers
+    WHERE LOWER(TRIM(transaction_id_utr)) = LOWER(TRIM($1))
+    LIMIT 1
+    `,
+    [normalizedReference],
+  );
+
+  if (result.rows.length > 0) {
+    throw createRequestError(
+      "This transaction reference already exists. Please enter a unique transaction ID / UTR / reference number.",
+      409,
+      "23505",
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   const client = await getClient();
 
@@ -171,11 +208,14 @@ export async function POST(request: NextRequest) {
       gender,
       dob,
       age,
+      street,
+      nation,
+      state,
+      district,
       seat_preference,
       room_preference,
       reference_name,
       payment_mode,
-      payment_type,
       transaction_id_utr,
       payment_pending_status,
       payment_amount,
@@ -196,11 +236,14 @@ export async function POST(request: NextRequest) {
       gender,
       dob,
       age,
+      street,
+      nation,
+      state,
+      district,
       seat_preference,
       room_preference,
       reference_name: normalizedReferenceName,
       payment_mode,
-      payment_type,
       transaction_id_utr,
       payment_pending_status,
       payment_amount,
@@ -226,14 +269,34 @@ export async function POST(request: NextRequest) {
 
     const primaryDobDate = parseDobString(dob, "Primary passenger");
     const parsedPrimaryAge = calculateAgeFromDob(primaryDobDate);
+    const normalizedGender = validateGender(gender, "Primary passenger");
+    const normalizedStreet = (street || "").trim();
+    const normalizedNation = (nation || "").trim();
+    const normalizedState = (state || "").trim();
+    const normalizedDistrict = (district || "").trim();
+
+    if (!normalizedStreet) {
+      throw createRequestError("Primary passenger street / address is required.", 400);
+    }
+
+    if (!normalizedNation) {
+      throw createRequestError("Primary passenger nation is required.", 400);
+    }
+
+    if (!normalizedState) {
+      throw createRequestError("Primary passenger state is required.", 400);
+    }
+
+    if (!normalizedDistrict) {
+      throw createRequestError("Primary passenger district is required.", 400);
+    }
 
     if (parsedPrimaryAge < 0 || parsedPrimaryAge > 120) {
       throw createRequestError("Primary passenger age must be between 0 and 120.", 400);
     }
 
-    const normalizedPaymentMode = (payment_mode || "").trim().toLowerCase();
+    const normalizedPaymentMode = (payment_mode || "").trim();
     const normalizedRoomPreference = (room_preference || "").trim().toLowerCase();
-    const normalizedPaymentType = (payment_type || "").trim();
     const normalizedTransactionIdUtr = (transaction_id_utr || "").trim();
     const normalizedPaymentPendingStatus = (payment_pending_status || "")
       .trim()
@@ -245,9 +308,29 @@ export async function POST(request: NextRequest) {
     );
     const normalizedAccessibilityNote = (accessibility_note || "").trim();
 
-    if (!["online", "manual"].includes(normalizedPaymentMode)) {
-      throw createRequestError("Invalid payment mode.", 400);
+    const paymentModes = [
+      "UPI",
+      "Bank Transfer",
+      "Net Banking",
+      "Credit Card",
+      "Debit Card",
+      "Cash",
+      "Other",
+    ];
+
+    if (!paymentModes.includes(normalizedPaymentMode)) {
+      throw createRequestError("Invalid payment mode selected.", 400);
     }
+
+    const requiresTransactionReference = [
+      "UPI",
+      "Bank Transfer",
+      "Net Banking",
+      "Credit Card",
+      "Debit Card",
+    ].includes(normalizedPaymentMode);
+    const isCashPayment = normalizedPaymentMode === "Cash";
+    const requiresPaymentProof = requiresTransactionReference;
 
     if (!Number.isFinite(parsedPaymentAmount) || parsedPaymentAmount < 0) {
       throw createRequestError("Payment amount cannot be negative.", 400);
@@ -257,28 +340,38 @@ export async function POST(request: NextRequest) {
       throw createRequestError("Room preference must be Single or Group.", 400);
     }
 
-    if (normalizedPaymentMode === "online") {
-      if (!normalizedPaymentType) {
-        throw createRequestError("Payment type is required for online booking.", 400);
-      }
-
+    if (requiresTransactionReference) {
       if (normalizedTransactionIdUtr.length < 6) {
         throw createRequestError(
-          "Transaction ID / UTR is required for online booking.",
+          "Transaction ID / UTR / reference number is required for this payment mode.",
           400,
         );
       }
+    }
 
-      if (
-        !["FULL_PAID", "BALANCE_5000"].includes(
-          normalizedPaymentPendingStatus,
-        )
-      ) {
-        throw createRequestError(
-          "Payment pending status must be Full Amount Paid or 5000 Balance Pending.",
-          400,
-        );
-      }
+    if (
+      !["FULL_PAID", "BALANCE_5000"].includes(
+        normalizedPaymentPendingStatus,
+      )
+    ) {
+      throw createRequestError(
+        "Payment pending status must be Full Amount Paid or 5000 Balance Pending.",
+        400,
+      );
+    }
+
+    if (requiresPaymentProof && (!files.payment_proof || files.payment_proof.length === 0)) {
+      throw createRequestError(
+        "Payment proof is required for this payment mode.",
+        400,
+      );
+    }
+
+    if (isCashPayment && normalizedTransactionIdUtr) {
+      throw createRequestError(
+        "Transaction reference should not be provided for Cash payment mode.",
+        400,
+      );
     }
 
     if (
@@ -305,6 +398,7 @@ export async function POST(request: NextRequest) {
       age: calculateAgeFromDob(
         parseDobString((member.dob || "").trim(), `Group member ${index + 1}`),
       ),
+      gender: validateGender(member.gender, `Group member ${index + 1}`),
       aadhaar_number: validateAadhaar(
         member.aadhaar_number,
         `Group member ${index + 1}`,
@@ -355,6 +449,9 @@ export async function POST(request: NextRequest) {
     }
 
     await ensureAadhaarDoesNotExist(client, requestAadhaarNumbers);
+    if (normalizedTransactionIdUtr) {
+      await ensureTransactionReferenceDoesNotExist(client, normalizedTransactionIdUtr);
+    }
 
     // Upload payment proof to Cloudinary
     let paymentProofUrl: string | null = null;
@@ -386,8 +483,8 @@ export async function POST(request: NextRequest) {
     const passengerResult = await client.query(
       `
       INSERT INTO passengers
-      (name, phone, emergency_contact_number, aadhaar_number, gender, dob, age, seat_preference, room_preference, requires_accessibility_support, accessibility_note, reference_name, payment_mode, payment_type, transaction_id_utr, payment_pending_status, payment_amount, payment_proof_url)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+      (name, phone, emergency_contact_number, aadhaar_number, gender, dob, age, street, nation, state, district, seat_preference, room_preference, requires_accessibility_support, accessibility_note, reference_name, payment_mode, transaction_id_utr, payment_pending_status, payment_amount, payment_proof_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
       RETURNING *
       `,
       [
@@ -395,16 +492,19 @@ export async function POST(request: NextRequest) {
         phone,
         normalizedEmergencyContactNumber,
         normalizedAadhaarNumber,
-        gender,
+        normalizedGender,
         dob,
         parsedPrimaryAge,
+        normalizedStreet,
+        normalizedNation,
+        normalizedState,
+        normalizedDistrict,
         seat_preference,
         normalizedRoomPreference,
         requiresAccessibilitySupport,
         normalizedAccessibilityNote || null,
         normalizedReferenceName,
         normalizedPaymentMode,
-        normalizedPaymentType || null,
         normalizedTransactionIdUtr || null,
         normalizedPaymentPendingStatus || null,
         parsedPaymentAmount,

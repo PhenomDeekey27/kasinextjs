@@ -17,6 +17,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
+interface AdminUser {
+  email?: string;
+  id?: string;
+  [key: string]: unknown;
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -26,7 +32,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [adminUser, setAdminUser] = useState<any>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +67,7 @@ export default function AdminLayout({
         variant: "default",
       });
       router.push("/admin/login");
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to logout",
@@ -92,31 +98,47 @@ export default function AdminLayout({
     return children;
   }
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      {/* Mobile Menu Toggle */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-3 left-3 p-2 rounded-lg bg-slate-900 text-white z-[60] shadow-lg"
-      >
-        {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
-
-      {/* Sidebar Navigation */}
-      <aside
-        className={`fixed md:relative w-64 h-screen bg-slate-900 text-slate-300 md:min-h-screen flex flex-col flex-shrink-0 transition-transform duration-300 z-50 overflow-y-auto ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
-      >
-        <div className="p-6 flex items-center space-x-3 text-white">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row md:items-stretch">
+      {/* Sticky Top Navbar for Mobile */}
+      <nav className="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center px-4 z-40 shadow-md">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
+        >
+          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+        <div className="ml-4 flex items-center gap-2">
           <Image
             src="/logo.jpeg"
             alt="J Tourism logo"
-            width={44}
-            height={44}
-            className="w-11 h-11 rounded-md object-cover bg-white"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-md object-cover bg-white p-1"
+          />
+          <span className="text-lg font-bold tracking-tight">Admin OS</span>
+        </div>
+      </nav>
+
+      {/* Sidebar Navigation */}
+      <aside
+        className={`fixed md:sticky md:top-0 w-64 h-screen bg-slate-900 text-slate-300 flex flex-col flex-shrink-0 transition-transform duration-300 z-50 overflow-y-auto ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        } top-0 left-0`}
+      >
+        {/* Logo Section - Hidden on Mobile (shown in navbar) */}
+        <div className="hidden md:flex p-6 items-center space-x-3 text-white">
+          <Image
+            src="/logo.jpeg"
+            alt="J Tourism logo"
+            width={56}
+            height={56}
+            className="w-14 h-14 rounded-md object-cover bg-white p-1"
           />
           <span className="text-xl font-bold tracking-tight">Admin OS</span>
         </div>
+
+        {/* Add padding for mobile to avoid navbar overlap */}
+        <div className="md:hidden h-16" />
 
         {/* User Profile Section */}
         <div className="px-4 py-4 border-t border-slate-700">
@@ -155,7 +177,7 @@ export default function AdminLayout({
         </nav>
 
         {/* Logout Button */}
-        <div className="mt-auto p-4 border-t border-slate-700 bg-slate-800 sticky bottom-0">
+        <div className="mt-auto p-4 border-t border-slate-700 bg-slate-800">
           <Button
             onClick={handleLogout}
             variant="destructive"
@@ -170,14 +192,16 @@ export default function AdminLayout({
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 md:hidden z-30"
+          className="fixed inset-0 bg-black/50 md:hidden z-30 top-16"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden p-6 md:p-8 lg:p-10 mt-16 md:mt-0">
-        <div className="max-w-7xl mx-auto w-full">{children}</div>
+      <main className="flex-1 w-full pt-16 md:pt-0 overflow-x-hidden">
+        <div className="p-6 md:p-8 lg:p-10 min-h-screen">
+          <div className="max-w-7xl mx-auto w-full">{children}</div>
+        </div>
       </main>
     </div>
   );

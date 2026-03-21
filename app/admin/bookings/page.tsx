@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
   Search,
   Filter,
+  Download,
   ChevronRight,
   User,
   Phone,
@@ -55,7 +56,7 @@ interface Booking {
   room_preference: string | null;
   requires_accessibility_support: boolean;
   payment_mode: string | null;
-  payment_type: string | null;
+  transaction_id_utr: string | null;
   payment_pending_status: string | null;
   seat_numbers: number[];
   seat_assignments: Array<{
@@ -108,6 +109,21 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const PAYMENT_MODE_OPTIONS = [
+  "UPI",
+  "Bank Transfer",
+  "Net Banking",
+  "Credit Card",
+  "Debit Card",
+  "Cash",
+  "Other",
+] as const;
+
+interface Coach {
+  id: number;
+  coach_number: string;
+}
+
 export default function BookingsPage() {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -119,6 +135,8 @@ export default function BookingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [coachesLoading, setCoachesLoading] = useState(true);
 
   // Detail modal state
   const [detailOpen, setDetailOpen] = useState(false);
@@ -138,9 +156,9 @@ export default function BookingsPage() {
     roomPreference: string;
     accessibilitySupport: string;
     paymentMode: string;
-    paymentType: string;
     paymentPendingStatus: string;
     coachNumber: string;
+    transactionId: string;
     referenceName: string;
     minPassengers: string;
     maxPassengers: string;
@@ -152,9 +170,9 @@ export default function BookingsPage() {
     roomPreference: "",
     accessibilitySupport: "",
     paymentMode: "",
-    paymentType: "",
     paymentPendingStatus: "",
     coachNumber: "",
+    transactionId: "",
     referenceName: "",
     minPassengers: "",
     maxPassengers: "",
@@ -167,7 +185,26 @@ export default function BookingsPage() {
   // Search states
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchBookings = async (page = 1) => {
+  // Fetch coaches
+  useEffect(() => {
+    const fetchCoaches = async () => {
+      try {
+        const response = await fetch("/api/coaches/list");
+        if (response.ok) {
+          const data = await response.json();
+          setCoaches(data.coaches);
+        }
+      } catch (error) {
+        console.error("Failed to fetch coaches:", error);
+      } finally {
+        setCoachesLoading(false);
+      }
+    };
+
+    fetchCoaches();
+  }, []);
+
+  const fetchBookings = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -187,10 +224,10 @@ export default function BookingsPage() {
       if (filters.accessibilitySupport)
         params.append("accessibilitySupport", filters.accessibilitySupport);
       if (filters.paymentMode) params.append("paymentMode", filters.paymentMode);
-      if (filters.paymentType) params.append("paymentType", filters.paymentType);
       if (filters.paymentPendingStatus)
         params.append("paymentPendingStatus", filters.paymentPendingStatus);
       if (filters.coachNumber) params.append("coachNumber", filters.coachNumber);
+      if (filters.transactionId) params.append("transactionId", filters.transactionId);
       if (filters.referenceName)
         params.append("referenceName", filters.referenceName);
       if (filters.minPassengers)
@@ -220,7 +257,14 @@ export default function BookingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    filters,
+    pagination.limit,
+    searchTerm,
+    sortBy,
+    sortOrder,
+    toast,
+  ]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -228,7 +272,7 @@ export default function BookingsPage() {
     }, 250);
 
     return () => clearTimeout(timeoutId);
-  }, [filters, sortBy, sortOrder, searchTerm]);
+  }, [fetchBookings]);
 
   const handleFilterChange = (key: string, value: string | null) => {
     setFilters((prev) => ({
@@ -246,9 +290,9 @@ export default function BookingsPage() {
       roomPreference: "",
       accessibilitySupport: "",
       paymentMode: "",
-      paymentType: "",
       paymentPendingStatus: "",
       coachNumber: "",
+      transactionId: "",
       referenceName: "",
       minPassengers: "",
       maxPassengers: "",
@@ -350,16 +394,141 @@ export default function BookingsPage() {
     }
   };
 
+  const exportBookings = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.append("page", "1");
+      params.append("limit", "5000");
+      params.append("sortBy", sortBy);
+      params.append("sortOrder", sortOrder);
+
+      if (searchTerm.trim()) params.append("search", searchTerm.trim());
+      if (filters.status) params.append("status", filters.status);
+      if (filters.needsReview) params.append("needsReview", filters.needsReview);
+      if (filters.startDate) params.append("startDate", filters.startDate);
+      if (filters.endDate) params.append("endDate", filters.endDate);
+      if (filters.roomPreference) params.append("roomPreference", filters.roomPreference);
+      if (filters.accessibilitySupport)
+        params.append("accessibilitySupport", filters.accessibilitySupport);
+      if (filters.paymentMode) params.append("paymentMode", filters.paymentMode);
+      if (filters.paymentPendingStatus)
+        params.append("paymentPendingStatus", filters.paymentPendingStatus);
+      if (filters.coachNumber) params.append("coachNumber", filters.coachNumber);
+      if (filters.transactionId) params.append("transactionId", filters.transactionId);
+      if (filters.referenceName) params.append("referenceName", filters.referenceName);
+      if (filters.minPassengers) params.append("minPassengers", filters.minPassengers);
+      if (filters.maxPassengers) params.append("maxPassengers", filters.maxPassengers);
+
+      const response = await fetch(`/api/admin/bookings?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to export bookings");
+      }
+
+      const data = await response.json();
+      const rows: Booking[] = data.bookings || [];
+
+      if (rows.length === 0) {
+        toast({
+          title: "No data to export",
+          description: "No bookings found for current filters.",
+        });
+        return;
+      }
+
+      const headers = [
+        "Booking ID",
+        "Passenger Name",
+        "Phone",
+        "Aadhaar",
+        "Coordinator",
+        "Room Preference",
+        "Accessibility Support",
+        "Payment Mode",
+        "Transaction ID / UTR",
+        "Payment Pending Status",
+        "Coach",
+        "Seat Numbers",
+        "Booking Status",
+        "Needs Review",
+        "Booked At",
+        "Total Passengers",
+      ];
+
+      const escapeCsv = (value: unknown) => {
+        const asString = String(value ?? "");
+        if (asString.includes(",") || asString.includes('"') || asString.includes("\n")) {
+          return `"${asString.replace(/"/g, '""')}"`;
+        }
+        return asString;
+      };
+
+      const csvLines = [
+        headers.join(","),
+        ...rows.map((row) =>
+          [
+            row.booking_id,
+            row.main_passenger_name,
+            row.phone,
+            row.aadhaar_number || "",
+            row.reference_name || "",
+            row.room_preference || "",
+            row.requires_accessibility_support ? "Yes" : "No",
+            row.payment_mode || "",
+            row.transaction_id_utr || "",
+            row.payment_pending_status || "",
+            row.coach_number || "",
+            row.seat_numbers.join("; "),
+            STATUS_LABELS[row.booking_status] ?? row.booking_status,
+            row.needs_review ? "Yes" : "No",
+            new Date(row.booked_at).toLocaleString(),
+            row.total_passengers,
+          ]
+            .map(escapeCsv)
+            .join(","),
+        ),
+      ];
+
+      const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const dateTag = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.setAttribute("download", `bookings-${dateTag}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export complete",
+        description: `Downloaded ${rows.length} bookings as CSV.`,
+      });
+    } catch (error) {
+      console.error("Failed to export bookings:", error);
+      toast({
+        title: "Export failed",
+        description: "Could not download bookings CSV.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-          All Bookings
-        </h1>
-        <p className="mt-1 text-slate-500">
-          Manage passenger seat requests and verify payments.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            All Bookings
+          </h1>
+          <p className="mt-1 text-slate-500">
+            Manage passenger seat requests and verify payments.
+          </p>
+        </div>
+        <Button onClick={exportBookings} className="w-full sm:w-auto flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Download CSV
+        </Button>
       </div>
 
       {/* Search and Filter Bar */}
@@ -517,23 +686,13 @@ export default function BookingsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">All</SelectItem>
-                      <SelectItem value="online">Online</SelectItem>
-                      <SelectItem value="manual">Manual</SelectItem>
+                      {PAYMENT_MODE_OPTIONS.map((mode) => (
+                        <SelectItem key={mode} value={mode}>
+                          {mode}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1 block">
-                    Payment Type
-                  </label>
-                  <Input
-                    placeholder="e.g. UPI"
-                    value={filters.paymentType}
-                    onChange={(e) =>
-                      handleFilterChange("paymentType", e.target.value)
-                    }
-                  />
                 </div>
 
                 <div>
@@ -563,11 +722,35 @@ export default function BookingsPage() {
                   <label className="text-sm font-medium text-slate-700 mb-1 block">
                     Coach
                   </label>
+                  <Select
+                    value={filters.coachNumber || ""}
+                    onValueChange={(value) =>
+                      handleFilterChange("coachNumber", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={coachesLoading ? "Loading..." : "All"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All</SelectItem>
+                      {coaches.map((coach) => (
+                        <SelectItem key={coach.id} value={coach.coach_number}>
+                          {coach.coach_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Transaction ID
+                  </label>
                   <Input
-                    placeholder="e.g. A01"
-                    value={filters.coachNumber}
+                    placeholder="UTR / Reference number"
+                    value={filters.transactionId}
                     onChange={(e) =>
-                      handleFilterChange("coachNumber", e.target.value)
+                      handleFilterChange("transactionId", e.target.value)
                     }
                   />
                 </div>

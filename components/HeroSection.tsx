@@ -22,9 +22,11 @@ export function HeroSection() {
   return (
     <div className="w-full">
       {/* Hero Header */}
-      <section className="relative overflow-hidden bg-slate-900 py-24 sm:py-32 lg:pb-32 xl:pb-36 backdrop-blur">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1510133744874-096894065f49?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-30"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40" />
+      <section className="relative overflow-hidden bg-gradient-to-br from-cyan-600 via-sky-600 to-indigo-700 py-24 sm:py-32 lg:pb-36 xl:pb-40">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1510133744874-096894065f49?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-15"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.26),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.18),transparent_40%)]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-900/15 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent to-slate-50" />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
@@ -52,7 +54,7 @@ export function HeroSection() {
               className="mt-10 flex items-center justify-center gap-x-6"
             >
               <Link href="/book-ticket">
-                <Button size="lg" className="rounded-full bg-blue-600 px-8 py-6 text-lg font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all hover:scale-105">
+                <Button size="lg" className="rounded-full bg-white px-8 py-6 text-lg font-semibold text-sky-700 shadow-lg hover:bg-sky-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all hover:scale-105">
                   Book Tickets
                 </Button>
               </Link>
