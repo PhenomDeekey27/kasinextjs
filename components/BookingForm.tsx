@@ -27,10 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import {
-  Card,
-  CardContent,
-} from "./ui/card";
+import { Card, CardContent } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { getAllStates, getDistricts } from "india-state-district";
 import {
@@ -187,8 +184,12 @@ function DobCalendarField({
   return (
     <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
       <Popover.Trigger className="flex h-11 w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-left text-sm shadow-sm transition-colors hover:border-slate-400 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-        <span className={selectedDate ? "text-foreground" : "text-muted-foreground"}>
-          {selectedDate ? format(selectedDate, "dd/MM/yyyy") : "Pick date of birth"}
+        <span
+          className={selectedDate ? "text-foreground" : "text-muted-foreground"}
+        >
+          {selectedDate
+            ? format(selectedDate, "dd/MM/yyyy")
+            : "Pick date of birth"}
         </span>
         <CalendarDays className="size-4 text-slate-500" />
       </Popover.Trigger>
@@ -263,9 +264,13 @@ const aadhaarFieldSchema = z
 const genderFieldSchema = z
   .string()
   .min(1, "Please select gender")
-  .refine((value) => GENDER_OPTIONS.includes(value as (typeof GENDER_OPTIONS)[number]), {
-    message: "Please select a valid gender",
-  });
+  .refine(
+    (value) =>
+      GENDER_OPTIONS.includes(value as (typeof GENDER_OPTIONS)[number]),
+    {
+      message: "Please select a valid gender",
+    },
+  );
 
 const formSchema = z
   .object({
@@ -326,7 +331,8 @@ const formSchema = z
 
       if (
         member.requiresAccessibilitySupport === "yes" &&
-        (!member.accessibilityNote || member.accessibilityNote.trim().length < 4)
+        (!member.accessibilityNote ||
+          member.accessibilityNote.trim().length < 4)
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -363,7 +369,10 @@ const formSchema = z
         values.paymentMode as (typeof PAYMENT_MODES_REQUIRING_TRANSACTION)[number],
       )
     ) {
-      if (!values.transactionIdUtr || values.transactionIdUtr.trim().length < 6) {
+      if (
+        !values.transactionIdUtr ||
+        values.transactionIdUtr.trim().length < 6
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["transactionIdUtr"],
@@ -471,14 +480,12 @@ export function BookingForm() {
   const isCashPayment = paymentMode === "Cash";
   const shouldShowTransactionField = paymentMode !== "Cash";
   const shouldShowPaymentProofField = paymentMode !== "Cash";
-  const isTransactionRequired =
-    PAYMENT_MODES_REQUIRING_TRANSACTION.includes(
-      paymentMode as (typeof PAYMENT_MODES_REQUIRING_TRANSACTION)[number],
-    );
-  const isPaymentProofRequired =
-    PAYMENT_MODES_REQUIRING_PROOF.includes(
-      paymentMode as (typeof PAYMENT_MODES_REQUIRING_PROOF)[number],
-    );
+  const isTransactionRequired = PAYMENT_MODES_REQUIRING_TRANSACTION.includes(
+    paymentMode as (typeof PAYMENT_MODES_REQUIRING_TRANSACTION)[number],
+  );
+  const isPaymentProofRequired = PAYMENT_MODES_REQUIRING_PROOF.includes(
+    paymentMode as (typeof PAYMENT_MODES_REQUIRING_PROOF)[number],
+  );
 
   const transactionFieldLabel = useMemo(() => {
     if (paymentMode === "UPI") {
@@ -510,28 +517,26 @@ export function BookingForm() {
     () =>
       availableStates.find(
         (stateName) =>
-          stateName.toLowerCase() === (selectedState || "").trim().toLowerCase(),
+          stateName.toLowerCase() ===
+          (selectedState || "").trim().toLowerCase(),
       ) || "",
     [availableStates, selectedState],
   );
 
-  const availableDistricts = useMemo(
-    () => {
-      if (!isIndiaSelected || !matchedStateName) {
-        return [];
-      }
+  const availableDistricts = useMemo(() => {
+    if (!isIndiaSelected || !matchedStateName) {
+      return [];
+    }
 
-      const stateCode = STATE_CODE_BY_NAME[matchedStateName.toLowerCase()];
-      if (!stateCode) {
-        return [];
-      }
+    const stateCode = STATE_CODE_BY_NAME[matchedStateName.toLowerCase()];
+    if (!stateCode) {
+      return [];
+    }
 
-      return getDistricts(stateCode).sort((left, right) =>
-        left.localeCompare(right),
-      );
-    },
-    [isIndiaSelected, matchedStateName],
-  );
+    return getDistricts(stateCode).sort((left, right) =>
+      left.localeCompare(right),
+    );
+  }, [isIndiaSelected, matchedStateName]);
 
   const referenceQuery = (
     form.watch("primaryPassenger.referenceMember") || ""
@@ -817,7 +822,10 @@ export function BookingForm() {
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter 10-digit mobile number" {...field} />
+                        <Input
+                          placeholder="Enter 10-digit mobile number"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1049,7 +1057,9 @@ export function BookingForm() {
                     name="primaryPassenger.accessibilityNote"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Medical / Accessibility Support Note</FormLabel>
+                        <FormLabel>
+                          Medical / Accessibility Support Note
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter assistance details (optional equipment, mobility support, etc.)"
@@ -1271,7 +1281,9 @@ export function BookingForm() {
                                 "",
                                 { shouldValidate: false, shouldDirty: true },
                               );
-                              form.clearErrors(`groupMembers.${index}.relationship`);
+                              form.clearErrors(
+                                `groupMembers.${index}.relationship`,
+                              );
                             }}
                             value={field.value}
                           >
@@ -1333,7 +1345,9 @@ export function BookingForm() {
 
                         return (
                           <FormItem>
-                            <FormLabel className="text-xs">Relationship</FormLabel>
+                            <FormLabel className="text-xs">
+                              Relationship
+                            </FormLabel>
                             <Select
                               key={`${index}-${selectedGender}`}
                               onValueChange={field.onChange}
@@ -1489,7 +1503,10 @@ export function BookingForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Payment Mode</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select payment mode" />

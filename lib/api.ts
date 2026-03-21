@@ -67,20 +67,23 @@ function transformBookingData(bookingData: SubmitBookingPayload) {
   } = bookingData;
 
   // Transform group members to JSON string
-  const transformedGroupMembers = groupMembers.length > 0 
-    ? JSON.stringify(groupMembers.map((m) => ({
-        name: m.name,
-        dob: m.dob,
-        age: m.age,
-        gender: m.gender,
-        relationship: m.relationship,
-        aadhaar_number: normalizeAadhaar(m.aadhaar),
-        seat_preference: m.seatPreference,
-        requires_accessibility_support:
-          m.requiresAccessibilitySupport === "yes",
-        accessibility_note: m.accessibilityNote?.trim() || null,
-      })))
-    : null;
+  const transformedGroupMembers =
+    groupMembers.length > 0
+      ? JSON.stringify(
+          groupMembers.map((m) => ({
+            name: m.name,
+            dob: m.dob,
+            age: m.age,
+            gender: m.gender,
+            relationship: m.relationship,
+            aadhaar_number: normalizeAadhaar(m.aadhaar),
+            seat_preference: m.seatPreference,
+            requires_accessibility_support:
+              m.requiresAccessibilitySupport === "yes",
+            accessibility_note: m.accessibilityNote?.trim() || null,
+          })),
+        )
+      : null;
 
   const computedPendingAmount =
     paymentPendingStatus === "BALANCE_5000" ? 5000 : 0;
@@ -103,7 +106,10 @@ function transformBookingData(bookingData: SubmitBookingPayload) {
     requires_accessibility_support:
       primaryPassenger.requiresAccessibilitySupport === "yes",
     accessibility_note: primaryPassenger.accessibilityNote?.trim() || null,
-    reference_name: primaryPassenger.referenceMember === "None" ? null : primaryPassenger.referenceMember,
+    reference_name:
+      primaryPassenger.referenceMember === "None"
+        ? null
+        : primaryPassenger.referenceMember,
     // Group members and payment
     group_members: transformedGroupMembers,
     payment_mode: paymentMode,
@@ -121,10 +127,10 @@ function transformBookingData(bookingData: SubmitBookingPayload) {
 export const submitBooking = async (bookingData: SubmitBookingPayload) => {
   try {
     const transformedData = transformBookingData(bookingData);
-    
+
     // Create FormData for multipart upload
     const formData = new FormData();
-    
+
     // Add all string fields
     formData.append("name", transformedData.name);
     formData.append("phone", transformedData.phone);
@@ -150,17 +156,20 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
     if (transformedData.accessibility_note) {
       formData.append("accessibility_note", transformedData.accessibility_note);
     }
-    
+
     if (transformedData.reference_name) {
       formData.append("reference_name", transformedData.reference_name);
     }
-    
+
     if (transformedData.group_members) {
       formData.append("group_members", transformedData.group_members);
     }
 
     formData.append("payment_mode", transformedData.payment_mode);
-    formData.append("payment_amount", transformedData.payment_amount.toString());
+    formData.append(
+      "payment_amount",
+      transformedData.payment_amount.toString(),
+    );
 
     if (transformedData.payment_pending_status) {
       formData.append(
@@ -172,12 +181,15 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
     if (transformedData.transaction_id_utr) {
       formData.append("transaction_id_utr", transformedData.transaction_id_utr);
     }
-    
+
     // Add file if present (for online payments)
-    if (transformedData.payment_proof instanceof FileList && transformedData.payment_proof.length > 0) {
+    if (
+      transformedData.payment_proof instanceof FileList &&
+      transformedData.payment_proof.length > 0
+    ) {
       formData.append("payment_proof", transformedData.payment_proof[0]);
     }
-    
+
     // Log for debugging
     console.log("Submitting booking with FormData:", {
       name: transformedData.name,
@@ -185,16 +197,18 @@ export const submitBooking = async (bookingData: SubmitBookingPayload) => {
       paymentMode: transformedData.payment_mode,
       paymentAmount: transformedData.payment_amount,
       transactionIdUtr: transformedData.transaction_id_utr,
-      groupMembers: transformedData.group_members ? JSON.parse(transformedData.group_members) : [],
+      groupMembers: transformedData.group_members
+        ? JSON.parse(transformedData.group_members)
+        : [],
       hasPaymentProof: !!transformedData.payment_proof,
     });
-    
+
     const response = await api.post("/book-ticket", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     });
-    
+
     return response.data;
   } catch (error) {
     if (!axios.isAxiosError(error) || error.response?.status !== 409) {
