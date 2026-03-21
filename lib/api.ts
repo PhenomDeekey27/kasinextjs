@@ -15,7 +15,7 @@ interface BookingPrimaryPassenger {
   district: string;
   seatPreference: string;
   roomPreference: string;
-  requiresAccessibilitySupport: "no" | "yes";
+  requiresAccessibilitySupport: string;
   accessibilityNote?: string;
   referenceMember?: string;
 }
@@ -28,7 +28,7 @@ interface BookingGroupMember {
   relationship: string;
   aadhaar: string;
   seatPreference: string;
-  requiresAccessibilitySupport: "no" | "yes";
+  requiresAccessibilitySupport: string;
   accessibilityNote?: string;
 }
 

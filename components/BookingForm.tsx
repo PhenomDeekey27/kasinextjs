@@ -452,7 +452,7 @@ export function BookingForm() {
         referenceMember: "", // default
       },
       groupMembers: [],
-      paymentMode: "",
+      paymentMode: undefined,
       transactionIdUtr: "",
       paymentPendingStatus: undefined,
     },
@@ -566,7 +566,7 @@ export function BookingForm() {
         referenceMember: "",
       },
       groupMembers: [],
-      paymentMode: "",
+      paymentMode: undefined,
       transactionIdUtr: "",
       paymentPendingStatus: undefined,
       paymentProof: undefined,
